@@ -104,6 +104,8 @@ function createGame(player1, player2) {
     choosingPlayer: null,
     roundStartTime: 0,       // timestamp du début de round
     faultedThisRound: new Set(), // joueurs ayant fait une faute ce round
+    firstCorrectClick: null,  // { socketId, side, reactionTime }
+    secondCorrectClick: null, // close race detection
     stats: {
       [player1.socket.id]: { totalTime: 0, wins: 0 },
       [player2.socket.id]: { totalTime: 0, wins: 0 },
@@ -131,7 +133,16 @@ function createGame(player1, player2) {
     opponentName: player1.name,
   });
 
-  startMemorize(id);
+  startPlacement(id);
+}
+
+function startPlacement(gameId) {
+  const game = games.get(gameId);
+  if (!game) return;
+  game.phase = 'placement';
+  game.readyPlayers = new Set();
+  game.positions = {};
+  emitToAll(game, 'game:placement', {});
 }
 
 function startMemorize(gameId) {
@@ -200,6 +211,8 @@ function startRound(gameId) {
   game.lockedPlayers.clear();
   game.choosingPlayer = null;
   game.faultedThisRound.clear();
+  game.firstCorrectClick = null;
+  game.secondCorrectClick = null;
   game.roundStartTime = Date.now();
 
   // Annonce + course simultanées
@@ -233,64 +246,19 @@ function handleCardClick(socket, phraseText, side) {
 
   if (phraseText === game.currentPhrase) {
     // ══ BONNE RÉPONSE ══
-    targetHand.splice(cardIndex, 1);
-    game.phase = 'roundEnd';
-    clearGameTimers(game);
-
-    const tookFromOpponent = (side === 'opponent');
-
-    // Stats de vitesse
     const reactionTime = Date.now() - game.roundStartTime;
-    game.stats[socket.id].totalTime += reactionTime;
-    game.stats[socket.id].wins++;
 
-    // Pénalité de faute : si l'adversaire a fauté ce round, il reçoit une carte
-    // On choisit aléatoirement une carte du gagnant à donner au fautif
-    const loserId = opponentId;
-    let faultPenaltyPhrase = null;
-    if (game.faultedThisRound.has(loserId) && myHand.length > 0) {
-      // Le gagnant envoie une carte random au perdeur fautif
-      const randomIdx = Math.floor(Math.random() * myHand.length);
-      faultPenaltyPhrase = myHand[randomIdx];
-      myHand.splice(randomIdx, 1);
-      game.hands[loserId].push(faultPenaltyPhrase);
-    }
-
-    // Envoyer le résultat aux deux joueurs
-    const ids = Object.keys(game.players);
-    for (const sid of ids) {
-      const oppSid = getOpponentId(game, sid);
-      const avgTime = game.stats[sid].wins > 0
-        ? Math.round(game.stats[sid].totalTime / game.stats[sid].wins)
-        : 0;
-      const oppAvgTime = game.stats[oppSid].wins > 0
-        ? Math.round(game.stats[oppSid].totalTime / game.stats[oppSid].wins)
-        : 0;
-      game.players[sid].socket.emit('round:result', {
-        winnerId: socket.id,
-        winnerName: game.players[socket.id].name,
-        phrase: phraseText,
-        yourHand: [...game.hands[sid]],
-        opponentHand: [...game.hands[oppSid]],
-        youWonRound: sid === socket.id,
-        tookFromOpponent,
-        reactionTime,
-        yourAvgTime: avgTime,
-        opponentAvgTime: oppAvgTime,
-        faultPenaltyPhrase,
-        faultPenaltyTo: game.faultedThisRound.has(loserId) ? loserId : null,
-      });
-    }
-
-    if (tookFromOpponent && myHand.length > 0) {
-      game.phase = 'choosing';
-      game.choosingPlayer = socket.id;
-      socket.emit('game:chooseTransfer', {});
-      game.players[opponentId].socket.emit('game:waitingTransfer', {
-        message: "L'adversaire choisit une carte à vous envoyer...",
-      });
-    } else {
-      checkWinOrContinue(game, gameId);
+    if (!game.firstCorrectClick) {
+      // Premier clic correct — attendre 200ms pour détecter une course serrée
+      clearGameTimers(game);
+      game.firstCorrectClick = { socketId: socket.id, side, reactionTime };
+      game.lockedPlayers.add(socket.id);
+      game.timers.push(setTimeout(() => resolveCorrectClick(game, gameId), 200));
+    } else if (game.firstCorrectClick.socketId !== socket.id) {
+      // Deuxième joueur a aussi trouvé — course serrée !
+      clearGameTimers(game);
+      game.secondCorrectClick = { socketId: socket.id, side, reactionTime };
+      resolveCorrectClick(game, gameId);
     }
   } else {
     // ══ MAUVAISE CARTE ══
@@ -300,6 +268,98 @@ function handleCardClick(socket, phraseText, side) {
     setTimeout(() => {
       game.lockedPlayers.delete(socket.id);
     }, 100);
+  }
+}
+
+function resolveCorrectClick(game, gameId) {
+  const first = game.firstCorrectClick;
+  if (!first) return;
+  const second = game.secondCorrectClick;
+
+  const winnerId = first.socketId;
+  const winnerSide = first.side;
+  const phraseText = game.currentPhrase;
+
+  const myHand = game.hands[winnerId];
+  const opponentId = getOpponentId(game, winnerId);
+  const oppHand = game.hands[opponentId];
+
+  // Retirer la carte de la bonne main
+  const targetHand = winnerSide === 'opponent' ? oppHand : myHand;
+  const cardIndex = targetHand.indexOf(phraseText);
+  if (cardIndex !== -1) targetHand.splice(cardIndex, 1);
+
+  game.phase = 'roundEnd';
+
+  const tookFromOpponent = (winnerSide === 'opponent');
+  const reactionTime = first.reactionTime;
+
+  // Stats de vitesse
+  game.stats[winnerId].totalTime += reactionTime;
+  game.stats[winnerId].wins++;
+
+  // Pénalité de faute
+  const loserId = opponentId;
+  let faultPenaltyPhrase = null;
+  if (game.faultedThisRound.has(loserId) && myHand.length > 0) {
+    const randomIdx = Math.floor(Math.random() * myHand.length);
+    faultPenaltyPhrase = myHand[randomIdx];
+    myHand.splice(randomIdx, 1);
+    game.hands[loserId].push(faultPenaltyPhrase);
+  }
+
+  // Données de course serrée
+  let closeRace = null;
+  if (second) {
+    closeRace = {
+      winnerTime: first.reactionTime,
+      loserTime: second.reactionTime,
+      diff: second.reactionTime - first.reactionTime,
+      winnerName: game.players[first.socketId].name,
+      loserName: game.players[second.socketId].name,
+    };
+  }
+
+  // Envoyer le résultat aux deux joueurs
+  const ids = Object.keys(game.players);
+  for (const sid of ids) {
+    const oppSid = getOpponentId(game, sid);
+    const avgTime = game.stats[sid].wins > 0
+      ? Math.round(game.stats[sid].totalTime / game.stats[sid].wins)
+      : 0;
+    const oppAvgTime = game.stats[oppSid].wins > 0
+      ? Math.round(game.stats[oppSid].totalTime / game.stats[oppSid].wins)
+      : 0;
+    game.players[sid].socket.emit('round:result', {
+      winnerId,
+      winnerName: game.players[winnerId].name,
+      phrase: phraseText,
+      yourHand: [...game.hands[sid]],
+      opponentHand: [...game.hands[oppSid]],
+      youWonRound: sid === winnerId,
+      tookFromOpponent,
+      reactionTime,
+      yourAvgTime: avgTime,
+      opponentAvgTime: oppAvgTime,
+      faultPenaltyPhrase,
+      faultPenaltyTo: game.faultedThisRound.has(loserId) ? loserId : null,
+      closeRace,
+    });
+  }
+
+  // Reset close race state
+  game.firstCorrectClick = null;
+  game.secondCorrectClick = null;
+
+  if (tookFromOpponent && myHand.length > 0) {
+    game.phase = 'choosing';
+    game.choosingPlayer = winnerId;
+    game.players[winnerId].socket.emit('game:chooseTransfer', {});
+    game.players[opponentId].socket.emit('game:waitingTransfer', {
+      message: "L'adversaire choisit une carte à vous envoyer...",
+    });
+  } else {
+    checkWinOrContinue(game, gameId);
   }
 }
 
@@ -355,7 +415,7 @@ function checkWinOrContinue(game, gameId) {
     }
   }
 
-  game.timers.push(setTimeout(() => startRound(gameId), 2000));
+  game.timers.push(setTimeout(() => startRound(gameId), 5000));
 }
 
 function emitToAll(game, event, data) {
@@ -410,6 +470,42 @@ io.on('connection', (socket) => {
 
   socket.on('game:transferCard', ({ phraseText }) => {
     handleTransferCard(socket, phraseText);
+  });
+
+  socket.on('game:ready', ({ positions }) => {
+    const gameId = playerGameMap.get(socket.id);
+    if (!gameId) return;
+    const game = games.get(gameId);
+    if (!game || game.phase !== 'placement') return;
+    if (game.readyPlayers.has(socket.id)) return;
+
+    if (!Array.isArray(positions) || positions.length !== 12) return;
+    const handSet = new Set(game.hands[socket.id]);
+    const posCards = positions.filter(p => p !== null);
+    if (posCards.length !== handSet.size) return;
+    for (const card of posCards) {
+      if (!handSet.has(card)) return;
+    }
+
+    game.positions[socket.id] = positions;
+    game.readyPlayers.add(socket.id);
+
+    const opponentId = getOpponentId(game, socket.id);
+    if (opponentId) {
+      game.players[opponentId].socket.emit('game:opponentReady', {});
+    }
+
+    if (game.readyPlayers.size === 2) {
+      const ids = Object.keys(game.players);
+      for (const sid of ids) {
+        const oppId = getOpponentId(game, sid);
+        game.players[sid].socket.emit('game:allReady', {
+          yourPositions: game.positions[sid],
+          opponentPositions: game.positions[oppId],
+        });
+      }
+      game.timers.push(setTimeout(() => startMemorize(gameId), 500));
+    }
   });
 
   socket.on('disconnect', () => {

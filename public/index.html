@@ -56,6 +56,19 @@
 
     <!-- Zone centrale : mémo, countdown, statut -->
     <div id="center-zone">
+      <div id="placement-bar" class="hidden">
+        <div class="placement-label">Placez vos cartes sur la grille</div>
+        <div class="placement-controls">
+          <button id="btn-ready" class="btn-primary">Pr&ecirc;t</button>
+          <span id="ready-status"></span>
+        </div>
+      </div>
+
+      <div id="incoming-bar" class="hidden">
+        <div class="incoming-label">Placez la carte reçue</div>
+        <div id="incoming-card-preview" class="card"></div>
+      </div>
+
       <div id="memorize-bar" class="hidden">
         <div class="memorize-label">Mémorisez vos cartes !</div>
         <div class="memorize-timer-wrap">
@@ -101,6 +114,25 @@
       <h2 id="result-text"></h2>
       <p id="result-sub"></p>
       <button id="btn-replay" class="btn-primary">Rejouer</button>
+    </div>
+  </div>
+
+  <!-- ═══ Overlay course serrée ═══ -->
+  <div id="close-race-overlay" class="hidden">
+    <div class="close-race-box">
+      <div class="close-race-title">Course serrée !</div>
+      <div class="close-race-times">
+        <div class="race-player winner">
+          <span class="race-name" id="race-winner-name"></span>
+          <span class="race-time" id="race-winner-time"></span>
+        </div>
+        <div class="race-vs">VS</div>
+        <div class="race-player loser">
+          <span class="race-name" id="race-loser-name"></span>
+          <span class="race-time" id="race-loser-time"></span>
+        </div>
+      </div>
+      <div class="race-diff" id="race-diff"></div>
     </div>
   </div>
 

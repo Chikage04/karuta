@@ -46,11 +46,30 @@ const opponentAvgEl = $('#opponent-avg');
 const disconnectOverlay = $('#disconnect-overlay');
 const btnBackLobby = $('#btn-back-lobby');
 
+const closeRaceOverlay = $('#close-race-overlay');
+const raceWinnerName = $('#race-winner-name');
+const raceWinnerTime = $('#race-winner-time');
+const raceLoserName = $('#race-loser-name');
+const raceLoserTime = $('#race-loser-time');
+const raceDiff = $('#race-diff');
+
+const placementBar = $('#placement-bar');
+const btnReady = $('#btn-ready');
+const readyStatus = $('#ready-status');
+
+const incomingBar = $('#incoming-bar');
+const incomingCardPreview = $('#incoming-card-preview');
+
 // ─── État client ────────────────────────────────────────────────────────────
 let myHand = [];
 let oppHand = [];
 let locked = false;
 let cardsDisabled = true;
+let myPositions = new Array(12).fill(null);
+let oppPositions = new Array(12).fill(null);
+let isPlacementPhase = false;
+let dragState = null; // { sourceIndex, ghostEl, offsetX, offsetY }
+let pendingIncomingCard = null;
 
 // ─── Synthèse vocale (TTS) ─────────────────────────────────────────────────
 let frenchVoice = null;
@@ -124,6 +143,12 @@ btnBackLobby.addEventListener('click', () => {
   resetGameUI();
 });
 
+btnReady.addEventListener('click', () => {
+  socket.emit('game:ready', { positions: [...myPositions] });
+  btnReady.disabled = true;
+  btnReady.textContent = 'En attente...';
+});
+
 function resetGameUI() {
   opponentCardsZone.innerHTML = '';
   yourCardsZone.innerHTML = '';
@@ -131,11 +156,22 @@ function resetGameUI() {
   roundStatus.className = '';
   countdownDisplay.classList.add('hidden');
   memorizeBar.classList.add('hidden');
+  placementBar.classList.add('hidden');
+  incomingBar.classList.add('hidden');
   speakerIcon.classList.add('hidden');
   transferOverlay.classList.add('hidden');
   waitingOverlay.classList.add('hidden');
+  closeRaceOverlay.classList.add('hidden');
+  opponentCardsZone.classList.remove('hidden');
+  yourCardsZone.classList.remove('placement-mode');
+  yourCardsZone.classList.remove('incoming-mode');
   myHand = [];
   oppHand = [];
+  myPositions = new Array(12).fill(null);
+  oppPositions = new Array(12).fill(null);
+  dragState = null;
+  pendingIncomingCard = null;
+  isPlacementPhase = false;
   locked = false;
   cardsDisabled = true;
   speechSynthesis.cancel();
@@ -164,8 +200,141 @@ socket.on('game:init', ({ yourHand, opponentHand, yourName, opponentName }) => {
   yourAvgEl.textContent = '—';
   opponentAvgEl.textContent = '—';
   cardsDisabled = true;
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PLACEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+socket.on('game:placement', () => {
+  isPlacementPhase = true;
+  dragState = null;
+  myPositions = new Array(12).fill(null);
+  myHand.forEach((phrase, i) => { myPositions[i] = phrase; });
+
+  placementBar.classList.remove('hidden');
+  opponentCardsZone.classList.add('hidden');
+  yourCardsZone.classList.add('placement-mode');
+  btnReady.disabled = false;
+  btnReady.textContent = 'Prêt';
+  readyStatus.textContent = '';
+
+  renderPlacementGrid();
+});
+
+socket.on('game:opponentReady', () => {
+  readyStatus.textContent = 'Adversaire prêt !';
+});
+
+socket.on('game:allReady', ({ yourPositions, opponentPositions }) => {
+  myPositions = yourPositions;
+  oppPositions = opponentPositions;
+  isPlacementPhase = false;
+  dragState = null;
+
+  placementBar.classList.add('hidden');
+  opponentCardsZone.classList.remove('hidden');
+  yourCardsZone.classList.remove('placement-mode');
+
   renderAllCards();
 });
+
+function renderPlacementGrid() {
+  yourCardsZone.innerHTML = '';
+  for (let i = 0; i < 12; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'grid-slot';
+    slot.dataset.index = i;
+
+    if (myPositions[i]) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.textContent = myPositions[i];
+      card.style.animationDelay = `${i * 0.03}s`;
+      card.addEventListener('pointerdown', (e) => onDragStart(e, i));
+      slot.appendChild(card);
+    }
+
+    yourCardsZone.appendChild(slot);
+  }
+}
+
+function onDragStart(e, sourceIndex) {
+  if (!isPlacementPhase || dragState) return;
+  e.preventDefault();
+
+  const card = e.currentTarget;
+  const rect = card.getBoundingClientRect();
+
+  // Create ghost that follows cursor
+  const ghost = document.createElement('div');
+  ghost.className = 'card drag-ghost';
+  ghost.textContent = myPositions[sourceIndex];
+  ghost.style.width = rect.width + 'px';
+  ghost.style.minHeight = rect.height + 'px';
+  ghost.style.left = rect.left + 'px';
+  ghost.style.top = rect.top + 'px';
+  document.body.appendChild(ghost);
+
+  card.classList.add('dragging');
+
+  dragState = {
+    sourceIndex,
+    ghostEl: ghost,
+    offsetX: e.clientX - rect.left,
+    offsetY: e.clientY - rect.top,
+    sourceCard: card
+  };
+
+  card.setPointerCapture(e.pointerId);
+  card.addEventListener('pointermove', onDragMove);
+  card.addEventListener('pointerup', onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  dragState.ghostEl.style.left = (e.clientX - dragState.offsetX) + 'px';
+  dragState.ghostEl.style.top = (e.clientY - dragState.offsetY) + 'px';
+
+  // Highlight slot under cursor
+  const slots = yourCardsZone.querySelectorAll('.grid-slot');
+  slots.forEach(s => s.classList.remove('drop-target'));
+  const target = getSlotUnderPointer(e.clientX, e.clientY);
+  if (target !== null && target !== dragState.sourceIndex) {
+    slots[target].classList.add('drop-target');
+  }
+}
+
+function onDragEnd(e) {
+  if (!dragState) return;
+
+  const targetIndex = getSlotUnderPointer(e.clientX, e.clientY);
+
+  // Swap if dropped on a different slot
+  if (targetIndex !== null && targetIndex !== dragState.sourceIndex) {
+    [myPositions[dragState.sourceIndex], myPositions[targetIndex]] =
+      [myPositions[targetIndex], myPositions[dragState.sourceIndex]];
+  }
+
+  // Cleanup
+  dragState.ghostEl.remove();
+  dragState.sourceCard.removeEventListener('pointermove', onDragMove);
+  dragState.sourceCard.removeEventListener('pointerup', onDragEnd);
+  dragState = null;
+
+  renderPlacementGrid();
+}
+
+function getSlotUnderPointer(x, y) {
+  const slots = yourCardsZone.querySelectorAll('.grid-slot');
+  for (const slot of slots) {
+    const r = slot.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+      return parseInt(slot.dataset.index);
+    }
+  }
+  return null;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MÉMORISATION
@@ -210,19 +379,17 @@ socket.on('round:announce', ({ phrase, roundNumber }) => {
   speakerIcon.classList.remove('hidden');
   roundStatus.textContent = 'Trouvez la carte !';
   roundStatus.className = '';
-  // Cliquable immédiatement
   cardsDisabled = false;
   locked = false;
   setAllCardsDisabled(false);
   speakPhrase(phrase);
 });
 
-socket.on('round:result', ({ winnerName, phrase, yourHand, opponentHand, youWonRound, tookFromOpponent, reactionTime, yourAvgTime, opponentAvgTime, faultPenaltyPhrase }) => {
+socket.on('round:result', ({ winnerName, phrase, yourHand, opponentHand, youWonRound, tookFromOpponent, reactionTime, yourAvgTime, opponentAvgTime, faultPenaltyPhrase, closeRace }) => {
   cardsDisabled = true;
   setAllCardsDisabled(true);
   speakerIcon.classList.add('hidden');
 
-  // Mettre à jour les vitesses moyennes
   if (yourAvgTime > 0) yourAvgEl.textContent = `${yourAvgTime} ms`;
   if (opponentAvgTime > 0) opponentAvgEl.textContent = `${opponentAvgTime} ms`;
 
@@ -239,24 +406,19 @@ socket.on('round:result', ({ winnerName, phrase, yourHand, opponentHand, youWonR
     roundStatus.className = 'fail';
   }
 
-  // Animer la carte correcte avant de mettre à jour
+  if (closeRace) showCloseRace(closeRace);
+
   const cardEl = findCardInZones(phrase);
   if (cardEl) {
     cardEl.classList.add('correct');
     setTimeout(() => {
       cardEl.classList.add('removing');
       setTimeout(() => {
-        myHand = yourHand;
-        oppHand = opponentHand;
-        updateCounts();
-        renderAllCards();
+        applyHandUpdate(yourHand, opponentHand);
       }, 400);
     }, 500);
   } else {
-    myHand = yourHand;
-    oppHand = opponentHand;
-    updateCounts();
-    renderAllCards();
+    applyHandUpdate(yourHand, opponentHand);
   }
 });
 
@@ -286,7 +448,6 @@ socket.on('round:timeout', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 socket.on('game:chooseTransfer', () => {
-  // Afficher l'overlay avec mes cartes
   transferOverlay.classList.remove('hidden');
   transferCards.innerHTML = '';
   myHand.forEach((phrase, index) => {
@@ -309,12 +470,9 @@ socket.on('game:waitingTransfer', () => {
 socket.on('game:transferDone', ({ yourHand, opponentHand, transferredPhrase }) => {
   transferOverlay.classList.add('hidden');
   waitingOverlay.classList.add('hidden');
-  myHand = yourHand;
-  oppHand = opponentHand;
-  updateCounts();
-  renderAllCards();
   roundStatus.textContent = 'Carte transférée !';
   roundStatus.className = '';
+  applyHandUpdate(yourHand, opponentHand);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -340,36 +498,135 @@ socket.on('opponent:disconnected', () => {
   disconnectOverlay.classList.remove('hidden');
 });
 
-// Mise à jour des mains depuis le serveur (sync)
 socket.on('game:hands', ({ yourHand, opponentHand }) => {
-  myHand = yourHand;
-  oppHand = opponentHand;
-  updateCounts();
-  renderAllCards();
+  applyHandUpdate(yourHand, opponentHand);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// RENDU DES CARTES
+// RENDU DES CARTES (GRILLE 6×2)
 // ═══════════════════════════════════════════════════════════════════════════
 
 function renderAllCards() {
-  renderZone(opponentCardsZone, oppHand, 'opponent');
-  renderZone(yourCardsZone, myHand, 'your');
+  renderGridZone(opponentCardsZone, oppPositions, 'opponent');
+  renderGridZone(yourCardsZone, myPositions, 'your');
 }
 
-function renderZone(zone, hand, side) {
+function renderGridZone(zone, positions, side) {
   zone.innerHTML = '';
-  hand.forEach((phrase, index) => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.dataset.phrase = phrase;
-    card.dataset.side = side;
-    card.textContent = phrase;
-    card.style.animationDelay = `${index * 0.06}s`;
-    card.addEventListener('click', () => onCardClick(phrase, side));
-    if (cardsDisabled) card.classList.add('disabled');
-    zone.appendChild(card);
-  });
+  let cardIdx = 0;
+  for (let i = 0; i < 12; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'grid-slot';
+    slot.dataset.index = i;
+
+    if (positions[i]) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.phrase = positions[i];
+      card.dataset.side = side;
+      card.textContent = positions[i];
+      card.style.animationDelay = `${cardIdx * 0.06}s`;
+      card.addEventListener('click', () => onCardClick(positions[i], side));
+      if (cardsDisabled) card.classList.add('disabled');
+      slot.appendChild(card);
+      cardIdx++;
+    }
+
+    zone.appendChild(slot);
+  }
+}
+
+function syncPositions(positions, hand) {
+  const handSet = new Set(hand);
+  for (let i = 0; i < 12; i++) {
+    if (positions[i] && !handSet.has(positions[i])) positions[i] = null;
+  }
+  for (const phrase of hand) {
+    let found = false;
+    for (let i = 0; i < 12; i++) {
+      if (positions[i] === phrase) { found = true; break; }
+    }
+    if (!found) {
+      for (let i = 0; i < 12; i++) {
+        if (positions[i] === null) { positions[i] = phrase; break; }
+      }
+    }
+  }
+}
+
+// Retire les cartes absentes, retourne les nouvelles non placées
+function syncAndFindNew(positions, hand) {
+  const handSet = new Set(hand);
+  for (let i = 0; i < 12; i++) {
+    if (positions[i] && !handSet.has(positions[i])) positions[i] = null;
+  }
+  const placed = new Set(positions.filter(p => p !== null));
+  return hand.filter(p => !placed.has(p));
+}
+
+// Applique la mise à jour des mains, déclenche le placement si carte reçue
+function applyHandUpdate(yourHand, opponentHand) {
+  myHand = yourHand;
+  oppHand = opponentHand;
+  syncPositions(oppPositions, oppHand);
+  const unplaced = syncAndFindNew(myPositions, myHand);
+  updateCounts();
+
+  if (unplaced.length > 0) {
+    renderGridZone(opponentCardsZone, oppPositions, 'opponent');
+    showIncomingPlacement(unplaced[0]);
+  } else {
+    renderAllCards();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PLACEMENT DE CARTE REÇUE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showIncomingPlacement(phrase) {
+  pendingIncomingCard = phrase;
+  incomingCardPreview.textContent = phrase;
+  incomingBar.classList.remove('hidden');
+  yourCardsZone.classList.add('incoming-mode');
+  renderIncomingGrid();
+}
+
+function renderIncomingGrid() {
+  yourCardsZone.innerHTML = '';
+  for (let i = 0; i < 12; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'grid-slot';
+    slot.dataset.index = i;
+
+    if (myPositions[i]) {
+      const card = document.createElement('div');
+      card.className = 'card disabled';
+      card.textContent = myPositions[i];
+      slot.appendChild(card);
+    } else {
+      slot.classList.add('empty');
+      slot.addEventListener('click', () => onIncomingSlotClick(i));
+    }
+
+    yourCardsZone.appendChild(slot);
+  }
+}
+
+function onIncomingSlotClick(index) {
+  if (!pendingIncomingCard || myPositions[index]) return;
+  myPositions[index] = pendingIncomingCard;
+  pendingIncomingCard = null;
+
+  // Vérifier s'il reste des cartes à placer
+  const moreUnplaced = syncAndFindNew(myPositions, myHand);
+  if (moreUnplaced.length > 0) {
+    showIncomingPlacement(moreUnplaced[0]);
+  } else {
+    incomingBar.classList.add('hidden');
+    yourCardsZone.classList.remove('incoming-mode');
+    renderAllCards();
+  }
 }
 
 function setAllCardsDisabled(disabled) {
@@ -389,6 +646,20 @@ function findCardInZones(phrase) {
 function updateCounts() {
   yourCardsEl.textContent = myHand.length;
   opponentCardsEl.textContent = oppHand.length;
+}
+
+function showCloseRace(data) {
+  raceWinnerName.textContent = data.winnerName;
+  raceWinnerTime.textContent = `${data.winnerTime} ms`;
+  raceLoserName.textContent = data.loserName;
+  raceLoserTime.textContent = `${data.loserTime} ms`;
+  raceDiff.textContent = `\u0394 ${data.diff} ms`;
+  closeRaceOverlay.classList.remove('hidden');
+  const box = closeRaceOverlay.querySelector('.close-race-box');
+  box.style.animation = 'none';
+  box.offsetHeight;
+  box.style.animation = '';
+  setTimeout(() => closeRaceOverlay.classList.add('hidden'), 4000);
 }
 
 function onCardClick(phrase, side) {
