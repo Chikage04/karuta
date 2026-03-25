@@ -1,0 +1,620 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   KARUTA — Style japonais
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-deep: #1a0a2e;
+  --bg-dark: #0d0015;
+  --sakura: #d4456a;
+  --sakura-light: #f0829d;
+  --gold: #f0c27f;
+  --gold-dark: #c4a265;
+  --parchment: #faf3e0;
+  --parchment-dark: #f0e6cc;
+  --ink: #2c1810;
+  --jade: #4ecdc4;
+  --vermillion: #ff6b6b;
+  --white-soft: rgba(255, 255, 255, 0.9);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: radial-gradient(ellipse at center top, var(--bg-deep) 0%, var(--bg-dark) 70%);
+  color: var(--white-soft);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#petals {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Écrans ─────────────────────────────────────────────────────────────── */
+.screen {
+  display: none;
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+.screen.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#screen-game.active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px 0;
+  min-height: 100vh;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOBBY
+   ═══════════════════════════════════════════════════════════════════════════ */
+.lobby-content {
+  text-align: center;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.title-jp {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 5rem;
+  color: var(--gold);
+  text-shadow: 0 0 40px rgba(240, 194, 127, 0.3);
+  letter-spacing: 0.3em;
+  line-height: 1.1;
+}
+
+.title-fr {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 2rem;
+  color: var(--sakura-light);
+  font-weight: 400;
+  letter-spacing: 0.5em;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.2em;
+  margin-bottom: 48px;
+}
+
+.lobby-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+#player-name {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(240, 194, 127, 0.3);
+  border-radius: 8px;
+  padding: 14px 24px;
+  font-size: 1.1rem;
+  color: var(--white-soft);
+  font-family: 'Noto Sans JP', sans-serif;
+  width: 280px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+#player-name::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+#player-name:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(240, 194, 127, 0.15);
+}
+
+/* ─── Boutons ────────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, var(--sakura) 0%, #b5375a 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 48px;
+  font-size: 1.1rem;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.05em;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(212, 69, 106, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 10px 32px;
+  font-size: 0.9rem;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.btn-secondary:hover {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ─── Matchmaking ────────────────────────────────────────────────────────── */
+#matchmaking-status {
+  margin-top: 24px;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+#matchmaking-status p {
+  color: rgba(255, 255, 255, 0.7);
+  margin: 16px 0;
+  letter-spacing: 0.05em;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(240, 194, 127, 0.2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   JEU — Header
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 900px;
+  padding: 6px 20px;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.info-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.info-name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.opponent-side .info-name { color: var(--vermillion); }
+.your-side .info-name { color: var(--jade); }
+
+.card-count {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+#round-indicator {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 0.85rem;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   JEU — Zones de cartes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.card-zone {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  max-width: 900px;
+  width: 100%;
+  min-height: 100px;
+}
+
+/* Cartes adverses : retournées 180° */
+#opponent-cards-zone {
+  transform: rotate(180deg);
+}
+
+#opponent-cards-zone .card {
+  border-color: var(--vermillion);
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+#opponent-cards-zone .card::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--vermillion);
+  border-radius: 50%;
+  opacity: 0.4;
+}
+
+#your-cards-zone .card::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--jade);
+  border-radius: 50%;
+  opacity: 0.4;
+}
+
+/* ─── Zone centrale ──────────────────────────────────────────────────────── */
+#center-zone {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 20px;
+  min-height: 60px;
+}
+
+#field-divider {
+  width: 80%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);
+  opacity: 0.3;
+  margin: 8px 0;
+}
+
+#round-status-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+#speaker-icon {
+  font-size: 1.5rem;
+  animation: speakerPulse 1s ease-in-out infinite;
+}
+
+#round-status {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.05em;
+}
+
+#round-status.success { color: var(--jade); font-weight: 500; }
+#round-status.fail { color: var(--vermillion); font-weight: 500; }
+
+#countdown-display {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 3.5rem;
+  color: var(--gold);
+  text-shadow: 0 0 30px rgba(240, 194, 127, 0.4);
+  animation: pulseScale 0.6s ease-out;
+}
+
+/* ─── Barre de mémorisation ──────────────────────────────────────────────── */
+#memorize-bar {
+  width: 100%;
+  max-width: 700px;
+  text-align: center;
+  padding: 12px 20px;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.memorize-label {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1.2rem;
+  color: var(--gold);
+  margin-bottom: 10px;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 20px rgba(240, 194, 127, 0.3);
+}
+
+.memorize-timer-wrap {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#memorize-progress {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--sakura));
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+
+#memorize-seconds {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.card {
+  width: 155px;
+  min-height: 110px;
+  background: linear-gradient(145deg, var(--parchment), var(--parchment-dark));
+  border: 2px solid var(--gold-dark);
+  border-radius: 10px;
+  padding: 14px 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 0.78rem;
+  color: var(--ink);
+  line-height: 1.6;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  animation: cardEnter 0.5s ease-out backwards;
+}
+
+.card::before {
+  content: '~';
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-size: 1.2rem;
+  color: rgba(196, 162, 101, 0.2);
+  font-family: serif;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.card:active {
+  transform: translateY(-2px);
+}
+
+.card.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.card.correct {
+  animation: cardCorrect 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+.card.wrong {
+  animation: cardShake 0.4s ease-out;
+  border-color: var(--vermillion) !important;
+  box-shadow: 0 0 20px rgba(255, 107, 107, 0.4) !important;
+}
+
+.card.removing {
+  animation: cardRemove 0.5s ease-in forwards;
+  pointer-events: none;
+}
+
+.card.transfer-highlight {
+  border-color: var(--sakura) !important;
+  box-shadow: 0 0 20px rgba(212, 69, 106, 0.4) !important;
+  animation: transferPulse 0.8s ease-in-out infinite;
+}
+
+/* Stagger d'entrée */
+.card:nth-child(1) { animation-delay: 0s; }
+.card:nth-child(2) { animation-delay: 0.06s; }
+.card:nth-child(3) { animation-delay: 0.12s; }
+.card:nth-child(4) { animation-delay: 0.18s; }
+.card:nth-child(5) { animation-delay: 0.24s; }
+.card:nth-child(6) { animation-delay: 0.30s; }
+.card:nth-child(7) { animation-delay: 0.36s; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OVERLAYS (transfert, attente, déconnexion)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#transfer-overlay,
+#waiting-overlay,
+#disconnect-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay-box {
+  background: var(--bg-deep);
+  border: 1px solid var(--gold-dark);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  max-width: 90vw;
+}
+
+.overlay-box p {
+  margin-bottom: 20px;
+  font-size: 1.05rem;
+  color: var(--white-soft);
+}
+
+.transfer-box {
+  max-width: 700px;
+}
+
+#transfer-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+#transfer-cards .card {
+  border-color: var(--sakura);
+  cursor: pointer;
+}
+
+#transfer-cards .card:hover {
+  box-shadow: 0 0 25px rgba(212, 69, 106, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RÉSULTATS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.results-content {
+  text-align: center;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+#result-icon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+}
+
+#result-text {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+}
+
+#result-sub {
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 32px;
+  font-size: 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseScale {
+  0% { transform: scale(1.4); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes speakerPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cardCorrect {
+  0% { border-color: var(--jade); box-shadow: 0 0 0 0 rgba(78, 205, 196, 0.4); }
+  50% { border-color: var(--jade); box-shadow: 0 0 30px 5px rgba(78, 205, 196, 0.3); transform: scale(1.05); }
+  100% { border-color: var(--jade); box-shadow: 0 0 0 0 rgba(78, 205, 196, 0); transform: scale(1); }
+}
+
+@keyframes cardShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-8px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(6px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
+}
+
+@keyframes cardRemove {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.6) translateY(-20px); }
+}
+
+@keyframes transferPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(212, 69, 106, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(212, 69, 106, 0.6); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+  .title-jp { font-size: 3.5rem; }
+  .title-fr { font-size: 1.5rem; }
+  #player-name { width: 240px; }
+
+  .card {
+    width: 130px;
+    min-height: 90px;
+    padding: 10px 8px;
+    font-size: 0.7rem;
+  }
+
+  .card-zone { gap: 8px; padding: 6px 8px; }
+  #game-header { padding: 4px 10px; }
+  .info-name { font-size: 0.85rem; }
+  #center-zone { padding: 4px 10px; }
+
+  .overlay-box { padding: 20px; }
+  #transfer-cards .card { width: 120px; min-height: 80px; }
+}
+
+@media (max-width: 400px) {
+  .card { width: 110px; min-height: 80px; font-size: 0.65rem; }
+}

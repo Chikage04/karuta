@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>花札 Karuta — Le jeu des proverbes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <canvas id="petals"></canvas>
+
+  <!-- ═══ Écran Lobby ═══ -->
+  <div id="screen-lobby" class="screen active">
+    <div class="lobby-content">
+      <div class="title-group">
+        <h1 class="title-jp">花札</h1>
+        <h2 class="title-fr">Karuta</h2>
+        <p class="subtitle">Le jeu des proverbes</p>
+      </div>
+      <div class="lobby-form">
+        <input type="text" id="player-name" placeholder="Votre nom..." maxlength="20" autocomplete="off">
+        <button id="btn-start" class="btn-primary">Commencer</button>
+      </div>
+      <div id="matchmaking-status" class="hidden">
+        <div class="spinner"></div>
+        <p>Recherche d'un adversaire...</p>
+        <button id="btn-cancel" class="btn-secondary">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Écran Jeu ═══ -->
+  <div id="screen-game" class="screen">
+    <div id="game-header">
+      <div class="player-info opponent-side">
+        <span class="info-label">Adversaire</span>
+        <span id="opponent-name" class="info-name">—</span>
+        <span class="card-count"><span id="opponent-cards">5</span> cartes</span>
+      </div>
+      <div id="round-indicator">Tour <span id="round-number">0</span></div>
+      <div class="player-info your-side">
+        <span class="info-label">Vous</span>
+        <span id="your-name" class="info-name">—</span>
+        <span class="card-count"><span id="your-cards">5</span> cartes</span>
+      </div>
+    </div>
+
+    <!-- Cartes adverses (en haut, retournées 180°) -->
+    <div id="opponent-cards-zone" class="card-zone"></div>
+
+    <!-- Zone centrale : mémo, countdown, statut -->
+    <div id="center-zone">
+      <div id="memorize-bar" class="hidden">
+        <div class="memorize-label">Mémorisez vos cartes !</div>
+        <div class="memorize-timer-wrap">
+          <div id="memorize-progress"></div>
+        </div>
+        <div id="memorize-seconds">30s</div>
+      </div>
+
+      <div id="countdown-display" class="hidden"></div>
+
+      <div id="round-status-area">
+        <div id="speaker-icon" class="hidden">🔊</div>
+        <div id="round-status"></div>
+      </div>
+
+      <div id="field-divider"></div>
+    </div>
+
+    <!-- Vos cartes (en bas) -->
+    <div id="your-cards-zone" class="card-zone"></div>
+  </div>
+
+  <!-- ═══ Overlay transfert ═══ -->
+  <div id="transfer-overlay" class="hidden">
+    <div class="overlay-box transfer-box">
+      <p>Choisissez une carte à envoyer à l'adversaire</p>
+      <div id="transfer-cards"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Overlay attente transfert ═══ -->
+  <div id="waiting-overlay" class="hidden">
+    <div class="overlay-box">
+      <div class="spinner"></div>
+      <p>L'adversaire choisit une carte à vous envoyer...</p>
+    </div>
+  </div>
+
+  <!-- ═══ Écran Résultats ═══ -->
+  <div id="screen-results" class="screen">
+    <div class="results-content">
+      <div id="result-icon"></div>
+      <h2 id="result-text"></h2>
+      <p id="result-sub"></p>
+      <button id="btn-replay" class="btn-primary">Rejouer</button>
+    </div>
+  </div>
+
+  <!-- ═══ Overlay déconnexion ═══ -->
+  <div id="disconnect-overlay" class="hidden">
+    <div class="overlay-box">
+      <p>Votre adversaire s'est déconnecté</p>
+      <button id="btn-back-lobby" class="btn-primary">Retour au lobby</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/game.js"></script>
+</body>
+</html>
