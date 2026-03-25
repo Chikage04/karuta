@@ -415,7 +415,7 @@ function checkWinOrContinue(game, gameId) {
     }
   }
 
-  game.timers.push(setTimeout(() => startRound(gameId), 5000));
+  game.timers.push(setTimeout(() => startRound(gameId), 10000));
 }
 
 function emitToAll(game, event, data) {

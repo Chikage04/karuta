@@ -375,6 +375,7 @@ socket.on('game:countdown', ({ count }) => {
 });
 
 socket.on('round:announce', ({ phrase, roundNumber }) => {
+  finishPendingIncoming();
   roundNumberEl.textContent = roundNumber;
   speakerIcon.classList.remove('hidden');
   roundStatus.textContent = 'Trouvez la carte !';
@@ -436,6 +437,7 @@ socket.on('round:penalty', ({ phrase, side }) => {
 });
 
 socket.on('round:timeout', () => {
+  finishPendingIncoming();
   cardsDisabled = true;
   setAllCardsDisabled(true);
   speakerIcon.classList.add('hidden');
@@ -448,6 +450,7 @@ socket.on('round:timeout', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 socket.on('game:chooseTransfer', () => {
+  finishPendingIncoming();
   transferOverlay.classList.remove('hidden');
   transferCards.innerHTML = '';
   myHand.forEach((phrase, index) => {
@@ -464,6 +467,7 @@ socket.on('game:chooseTransfer', () => {
 });
 
 socket.on('game:waitingTransfer', () => {
+  finishPendingIncoming();
   waitingOverlay.classList.remove('hidden');
 });
 
@@ -623,10 +627,28 @@ function onIncomingSlotClick(index) {
   if (moreUnplaced.length > 0) {
     showIncomingPlacement(moreUnplaced[0]);
   } else {
-    incomingBar.classList.add('hidden');
-    yourCardsZone.classList.remove('incoming-mode');
-    renderAllCards();
+    exitIncomingMode();
   }
+}
+
+// Auto-place les cartes en attente si un événement de jeu arrive
+function finishPendingIncoming() {
+  if (!pendingIncomingCard && !yourCardsZone.classList.contains('incoming-mode')) return;
+  // Placer toutes les cartes non placées dans les premiers slots libres
+  const unplaced = syncAndFindNew(myPositions, myHand);
+  for (const phrase of unplaced) {
+    for (let i = 0; i < 12; i++) {
+      if (myPositions[i] === null) { myPositions[i] = phrase; break; }
+    }
+  }
+  pendingIncomingCard = null;
+  exitIncomingMode();
+}
+
+function exitIncomingMode() {
+  incomingBar.classList.add('hidden');
+  yourCardsZone.classList.remove('incoming-mode');
+  renderAllCards();
 }
 
 function setAllCardsDisabled(disabled) {
