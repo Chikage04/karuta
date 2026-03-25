@@ -234,6 +234,13 @@ body {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.avg-time {
+  font-size: 0.7rem;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
 #round-indicator {
   font-family: 'Noto Serif JP', serif;
   font-size: 0.85rem;

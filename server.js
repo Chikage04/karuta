@@ -101,7 +101,13 @@ function createGame(player1, player2) {
     roundNumber: 0,
     timers: [],
     lockedPlayers: new Set(),
-    choosingPlayer: null, // socketId du joueur qui doit choisir une carte à transférer
+    choosingPlayer: null,
+    roundStartTime: 0,       // timestamp du début de round
+    faultedThisRound: new Set(), // joueurs ayant fait une faute ce round
+    stats: {
+      [player1.socket.id]: { totalTime: 0, wins: 0 },
+      [player2.socket.id]: { totalTime: 0, wins: 0 },
+    },
   };
 
   games.set(id, game);
@@ -190,9 +196,11 @@ function startRound(gameId) {
   game.roundNumber++;
   const phrase = allRemaining[Math.floor(Math.random() * allRemaining.length)];
   game.currentPhrase = phrase;
-  game.phase = 'racing'; // Cliquable immédiatement
+  game.phase = 'racing';
   game.lockedPlayers.clear();
   game.choosingPlayer = null;
+  game.faultedThisRound.clear();
+  game.roundStartTime = Date.now();
 
   // Annonce + course simultanées
   emitToAll(game, 'round:announce', { phrase, roundNumber: game.roundNumber });
@@ -231,10 +239,33 @@ function handleCardClick(socket, phraseText, side) {
 
     const tookFromOpponent = (side === 'opponent');
 
+    // Stats de vitesse
+    const reactionTime = Date.now() - game.roundStartTime;
+    game.stats[socket.id].totalTime += reactionTime;
+    game.stats[socket.id].wins++;
+
+    // Pénalité de faute : si l'adversaire a fauté ce round, il reçoit une carte
+    // On choisit aléatoirement une carte du gagnant à donner au fautif
+    const loserId = opponentId;
+    let faultPenaltyPhrase = null;
+    if (game.faultedThisRound.has(loserId) && myHand.length > 0) {
+      // Le gagnant envoie une carte random au perdeur fautif
+      const randomIdx = Math.floor(Math.random() * myHand.length);
+      faultPenaltyPhrase = myHand[randomIdx];
+      myHand.splice(randomIdx, 1);
+      game.hands[loserId].push(faultPenaltyPhrase);
+    }
+
     // Envoyer le résultat aux deux joueurs
     const ids = Object.keys(game.players);
     for (const sid of ids) {
       const oppSid = getOpponentId(game, sid);
+      const avgTime = game.stats[sid].wins > 0
+        ? Math.round(game.stats[sid].totalTime / game.stats[sid].wins)
+        : 0;
+      const oppAvgTime = game.stats[oppSid].wins > 0
+        ? Math.round(game.stats[oppSid].totalTime / game.stats[oppSid].wins)
+        : 0;
       game.players[sid].socket.emit('round:result', {
         winnerId: socket.id,
         winnerName: game.players[socket.id].name,
@@ -243,11 +274,15 @@ function handleCardClick(socket, phraseText, side) {
         opponentHand: [...game.hands[oppSid]],
         youWonRound: sid === socket.id,
         tookFromOpponent,
+        reactionTime,
+        yourAvgTime: avgTime,
+        opponentAvgTime: oppAvgTime,
+        faultPenaltyPhrase,
+        faultPenaltyTo: game.faultedThisRound.has(loserId) ? loserId : null,
       });
     }
 
     if (tookFromOpponent && myHand.length > 0) {
-      // Le joueur doit choisir une carte à envoyer à l'adversaire
       game.phase = 'choosing';
       game.choosingPlayer = socket.id;
       socket.emit('game:chooseTransfer', {});
@@ -255,11 +290,11 @@ function handleCardClick(socket, phraseText, side) {
         message: "L'adversaire choisit une carte à vous envoyer...",
       });
     } else {
-      // Soit c'était sa propre carte, soit il n'a plus de cartes
       checkWinOrContinue(game, gameId);
     }
   } else {
     // ══ MAUVAISE CARTE ══
+    game.faultedThisRound.add(socket.id);
     game.lockedPlayers.add(socket.id);
     socket.emit('round:penalty', { phrase: phraseText, side });
     setTimeout(() => {

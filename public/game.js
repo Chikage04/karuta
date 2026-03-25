@@ -40,6 +40,9 @@ const resultText = $('#result-text');
 const resultSub = $('#result-sub');
 const btnReplay = $('#btn-replay');
 
+const yourAvgEl = $('#your-avg');
+const opponentAvgEl = $('#opponent-avg');
+
 const disconnectOverlay = $('#disconnect-overlay');
 const btnBackLobby = $('#btn-back-lobby');
 
@@ -158,6 +161,8 @@ socket.on('game:init', ({ yourHand, opponentHand, yourName, opponentName }) => {
   opponentCardsEl.textContent = oppHand.length;
   roundNumberEl.textContent = '0';
   roundStatus.textContent = '';
+  yourAvgEl.textContent = '—';
+  opponentAvgEl.textContent = '—';
   cardsDisabled = true;
   renderAllCards();
 });
@@ -212,18 +217,25 @@ socket.on('round:announce', ({ phrase, roundNumber }) => {
   speakPhrase(phrase);
 });
 
-socket.on('round:result', ({ winnerName, phrase, yourHand, opponentHand, youWonRound, tookFromOpponent }) => {
+socket.on('round:result', ({ winnerName, phrase, yourHand, opponentHand, youWonRound, tookFromOpponent, reactionTime, yourAvgTime, opponentAvgTime, faultPenaltyPhrase }) => {
   cardsDisabled = true;
   setAllCardsDisabled(true);
   speakerIcon.classList.add('hidden');
 
+  // Mettre à jour les vitesses moyennes
+  if (yourAvgTime > 0) yourAvgEl.textContent = `${yourAvgTime} ms`;
+  if (opponentAvgTime > 0) opponentAvgEl.textContent = `${opponentAvgTime} ms`;
+
   if (youWonRound) {
-    roundStatus.textContent = tookFromOpponent
-      ? 'Pris chez l\'adversaire !'
-      : 'Bonne réponse !';
+    let msg = tookFromOpponent ? 'Pris chez l\'adversaire !' : 'Bonne réponse !';
+    msg += ` (${reactionTime} ms)`;
+    if (faultPenaltyPhrase) msg += ' + carte envoyée au fautif !';
+    roundStatus.textContent = msg;
     roundStatus.className = 'success';
   } else {
-    roundStatus.textContent = `${winnerName} a été plus rapide !`;
+    let msg = `${winnerName} a été plus rapide !`;
+    if (faultPenaltyPhrase) msg += ' Vous recevez une carte en plus (faute) !';
+    roundStatus.textContent = msg;
     roundStatus.className = 'fail';
   }
 
