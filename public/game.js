@@ -270,7 +270,7 @@ socket.on('round:penalty', ({ phrase, side }) => {
   }
   roundStatus.textContent = 'Mauvaise carte !';
   roundStatus.className = 'fail';
-  setTimeout(() => { locked = false; }, 500);
+  setTimeout(() => { locked = false; }, 100);
 });
 
 socket.on('round:timeout', () => {

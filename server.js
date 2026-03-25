@@ -299,7 +299,7 @@ function handleCardClick(socket, phraseText, side) {
     socket.emit('round:penalty', { phrase: phraseText, side });
     setTimeout(() => {
       game.lockedPlayers.delete(socket.id);
-    }, 500);
+    }, 100);
   }
 }
 
