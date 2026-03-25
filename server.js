@@ -82,9 +82,9 @@ function emitHands(game) {
 
 function createGame(player1, player2) {
   const id = `game_${++gameIdCounter}`;
-  const selected = shuffle(PHRASES).slice(0, 10);
-  const hand1 = selected.slice(0, 5);
-  const hand2 = selected.slice(5, 10);
+  const selected = shuffle(PHRASES).slice(0, 14);
+  const hand1 = selected.slice(0, 7);
+  const hand2 = selected.slice(7, 14);
 
   const game = {
     id,
@@ -133,7 +133,7 @@ function startMemorize(gameId) {
   if (!game) return;
   game.phase = 'memorize';
 
-  const MEMORIZE_DURATION = 30;
+  const MEMORIZE_DURATION = 45;
   emitToAll(game, 'game:memorize', { duration: MEMORIZE_DURATION });
 
   let remaining = MEMORIZE_DURATION;
@@ -190,26 +190,20 @@ function startRound(gameId) {
   game.roundNumber++;
   const phrase = allRemaining[Math.floor(Math.random() * allRemaining.length)];
   game.currentPhrase = phrase;
-  game.phase = 'announcing';
+  game.phase = 'racing'; // Cliquable immédiatement
   game.lockedPlayers.clear();
   game.choosingPlayer = null;
 
-  // Phase d'annonce — envoie la phrase (pour TTS côté client)
+  // Annonce + course simultanées
   emitToAll(game, 'round:announce', { phrase, roundNumber: game.roundNumber });
 
-  // Après 2.5s (temps pour TTS), activer la course
+  // Timeout de 10s
   game.timers.push(setTimeout(() => {
-    if (!games.has(gameId) || game.phase !== 'announcing') return;
-    game.phase = 'racing';
-    emitToAll(game, 'round:start', {});
-
-    game.timers.push(setTimeout(() => {
-      if (!games.has(gameId) || game.phase !== 'racing') return;
-      game.phase = 'roundEnd';
-      emitToAll(game, 'round:timeout', {});
-      game.timers.push(setTimeout(() => startRound(gameId), 2000));
-    }, 10000));
-  }, 2500));
+    if (!games.has(gameId) || game.phase !== 'racing') return;
+    game.phase = 'roundEnd';
+    emitToAll(game, 'round:timeout', {});
+    game.timers.push(setTimeout(() => startRound(gameId), 2000));
+  }, 10000));
 }
 
 function handleCardClick(socket, phraseText, side) {

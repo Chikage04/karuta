@@ -202,21 +202,14 @@ socket.on('game:countdown', ({ count }) => {
 
 socket.on('round:announce', ({ phrase, roundNumber }) => {
   roundNumberEl.textContent = roundNumber;
-  // PAS de texte affiché — uniquement la voix
   speakerIcon.classList.remove('hidden');
-  roundStatus.textContent = 'Écoutez...';
-  roundStatus.className = '';
-  cardsDisabled = true;
-  setAllCardsDisabled(true);
-  speakPhrase(phrase);
-});
-
-socket.on('round:start', () => {
   roundStatus.textContent = 'Trouvez la carte !';
   roundStatus.className = '';
+  // Cliquable immédiatement
   cardsDisabled = false;
   locked = false;
   setAllCardsDisabled(false);
+  speakPhrase(phrase);
 });
 
 socket.on('round:result', ({ winnerName, phrase, yourHand, opponentHand, youWonRound, tookFromOpponent }) => {
