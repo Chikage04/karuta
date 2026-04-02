@@ -65,6 +65,7 @@ let myHand = [];
 let oppHand = [];
 let locked = false;
 let cardsDisabled = true;
+const TOUCH_FEEDBACK_DURATION_MS = 200;
 let myPositions = new Array(12).fill(null);
 let oppPositions = new Array(12).fill(null);
 let isPlacementPhase = false;
@@ -458,9 +459,10 @@ socket.on('game:chooseTransfer', () => {
     card.className = 'card';
     card.textContent = phrase;
     card.style.animationDelay = `${index * 0.06}s`;
-    card.addEventListener('click', () => {
-      socket.emit('game:transferCard', { phraseText: phrase });
-      transferOverlay.classList.add('hidden');
+    card.addEventListener('pointerdown', () => {
+        triggerCardTouchFeedback(card);
+        socket.emit('game:transferCard', { phraseText: phrase });
+        transferOverlay.classList.add('hidden');
     });
     transferCards.appendChild(card);
   });
@@ -530,7 +532,9 @@ function renderGridZone(zone, positions, side) {
       card.dataset.side = side;
       card.textContent = positions[i];
       card.style.animationDelay = `${cardIdx * 0.06}s`;
-      card.addEventListener('click', () => onCardClick(positions[i], side));
+      card.addEventListener('pointerdown', () => {
+        onCardPress(positions[i], side, card);
+      });
       if (cardsDisabled) card.classList.add('disabled');
       slot.appendChild(card);
       cardIdx++;
@@ -610,7 +614,9 @@ function renderIncomingGrid() {
       slot.appendChild(card);
     } else {
       slot.classList.add('empty');
-      slot.addEventListener('click', () => onIncomingSlotClick(i));
+      slot.addEventListener('pointerdown', () => {
+        onIncomingSlotClick(i);
+      });
     }
 
     yourCardsZone.appendChild(slot);
@@ -684,10 +690,20 @@ function showCloseRace(data) {
   setTimeout(() => closeRaceOverlay.classList.add('hidden'), 4000);
 }
 
-function onCardClick(phrase, side) {
+function onCardPress(phrase, side, cardEl) {
   if (cardsDisabled || locked) return;
+  triggerCardTouchFeedback(cardEl);
   const serverSide = side === 'opponent' ? 'opponent' : 'own';
   socket.emit('game:cardClick', { phraseText: phrase, side: serverSide });
+}
+
+function triggerCardTouchFeedback(cardEl) {
+  if (!cardEl) return;
+  cardEl.classList.remove('touch-feedback');
+  requestAnimationFrame(() => {
+    cardEl.classList.add('touch-feedback');
+  });
+  setTimeout(() => cardEl.classList.remove('touch-feedback'), TOUCH_FEEDBACK_DURATION_MS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
