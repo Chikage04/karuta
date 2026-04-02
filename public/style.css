@@ -570,6 +570,10 @@ body {
   box-shadow: 0 0 20px rgba(255, 107, 107, 0.4) !important;
 }
 
+.card.touch-feedback {
+  animation: cardTouchFeedback 0.2s ease-out;
+}
+
 .card.removing {
   animation: cardRemove 0.5s ease-in forwards;
   pointer-events: none;
@@ -710,6 +714,13 @@ body {
   60% { transform: translateX(6px); }
   75% { transform: translateX(-3px); }
   90% { transform: translateX(3px); }
+}
+
+@keyframes cardTouchFeedback {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  50% { transform: translateX(2px); }
+  75% { transform: translateX(-1px); }
 }
 
 @keyframes cardRemove {
