@@ -65,6 +65,7 @@ let myHand = [];
 let oppHand = [];
 let locked = false;
 let cardsDisabled = true;
+const TOUCH_FEEDBACK_DURATION_MS = 200;
 let myPositions = new Array(12).fill(null);
 let oppPositions = new Array(12).fill(null);
 let isPlacementPhase = false;
@@ -458,12 +459,11 @@ socket.on('game:chooseTransfer', () => {
     card.className = 'card';
     card.textContent = phrase;
     card.style.animationDelay = `${index * 0.06}s`;
-      card.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+    card.addEventListener('pointerdown', () => {
         triggerCardTouchFeedback(card);
         socket.emit('game:transferCard', { phraseText: phrase });
         transferOverlay.classList.add('hidden');
-      });
+    });
     transferCards.appendChild(card);
   });
 });
@@ -532,8 +532,7 @@ function renderGridZone(zone, positions, side) {
       card.dataset.side = side;
       card.textContent = positions[i];
       card.style.animationDelay = `${cardIdx * 0.06}s`;
-      card.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      card.addEventListener('pointerdown', () => {
         onCardPress(positions[i], side, card);
       });
       if (cardsDisabled) card.classList.add('disabled');
@@ -615,8 +614,7 @@ function renderIncomingGrid() {
       slot.appendChild(card);
     } else {
       slot.classList.add('empty');
-      slot.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      slot.addEventListener('pointerdown', () => {
         onIncomingSlotClick(i);
       });
     }
@@ -702,9 +700,10 @@ function onCardPress(phrase, side, cardEl) {
 function triggerCardTouchFeedback(cardEl) {
   if (!cardEl) return;
   cardEl.classList.remove('touch-feedback');
-  cardEl.offsetHeight;
-  cardEl.classList.add('touch-feedback');
-  setTimeout(() => cardEl.classList.remove('touch-feedback'), 220);
+  requestAnimationFrame(() => {
+    cardEl.classList.add('touch-feedback');
+  });
+  setTimeout(() => cardEl.classList.remove('touch-feedback'), TOUCH_FEEDBACK_DURATION_MS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
