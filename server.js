@@ -12,40 +12,40 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ─── Banque de proverbes français ───────────────────────────────────────────
 const PHRASES = [
   "Qui vole un oeuf vole un boeuf",
-  "Pierre qui roule n'amasse pas mousse",
   "L'habit ne fait pas le moine",
   "Mieux vaut tard que jamais",
-  "Petit à petit, l'oiseau fait son nid",
   "Après la pluie, le beau temps",
-  "Il ne faut pas vendre la peau de l'ours avant de l'avoir tué",
   "Tout ce qui brille n'est pas or",
   "La nuit porte conseil",
-  "Qui sème le vent récolte la tempête",
   "Chat échaudé craint l'eau froide",
   "L'union fait la force",
-  "Rien ne sert de courir, il faut partir à point",
-  "À coeur vaillant rien d'impossible",
   "Les murs ont des oreilles",
-  "Il faut battre le fer tant qu'il est chaud",
   "Loin des yeux, loin du coeur",
   "Chacun voit midi à sa porte",
-  "La parole est d'argent, le silence est d'or",
   "Qui vivra verra",
   "Tel père, tel fils",
-  "La curiosité est un vilain défaut",
   "Il n'y a pas de fumée sans feu",
-  "On ne fait pas d'omelette sans casser des oeufs",
-  "Quand le chat n'est pas là, les souris dansent",
   "Rome ne s'est pas faite en un jour",
   "Il vaut mieux prévenir que guérir",
-  "Les bons comptes font les bons amis",
   "Aide-toi, le ciel t'aidera",
-  "C'est en forgeant qu'on devient forgeron",
   "Qui ne risque rien n'a rien",
-  "Il faut tourner sept fois sa langue dans sa bouche avant de parler",
-  "La vengeance est un plat qui se mange froid",
   "Les chiens ne font pas des chats",
   "Impossible n'est pas français",
+  "Vouloir c'est pouvoir",
+  "Chose promise, chose due",
+  "À bon chat, bon rat",
+  "Un mal pour un bien",
+  "Trop parler nuit",
+  "Qui dort dîne",
+  "Tout vient à point",
+  "Oeil pour oeil",
+  "Pas à pas on va loin",
+  "Rira bien qui rira le dernier",
+  "À chaque jour suffit sa peine",
+  "Jeu de main, jeu de vilain",
+  "Bon sang ne saurait mentir",
+  "Ami de tous, ami de personne",
+  "Le mieux est l'ennemi du bien",
 ];
 
 // ─── État du serveur ────────────────────────────────────────────────────────
@@ -249,16 +249,13 @@ function handleCardClick(socket, phraseText, side) {
     const reactionTime = Date.now() - game.roundStartTime;
 
     if (!game.firstCorrectClick) {
-      // Premier clic correct — attendre 200ms pour détecter une course serrée
+      // Premier clic correct — attendre 2s pour laisser les joueurs continuer à jouer
       clearGameTimers(game);
       game.firstCorrectClick = { socketId: socket.id, side, reactionTime };
-      game.lockedPlayers.add(socket.id);
-      game.timers.push(setTimeout(() => resolveCorrectClick(game, gameId), 200));
-    } else if (game.firstCorrectClick.socketId !== socket.id) {
+      game.timers.push(setTimeout(() => resolveCorrectClick(game, gameId), 2000));
+    } else if (game.firstCorrectClick.socketId !== socket.id && !game.secondCorrectClick) {
       // Deuxième joueur a aussi trouvé — course serrée !
-      clearGameTimers(game);
       game.secondCorrectClick = { socketId: socket.id, side, reactionTime };
-      resolveCorrectClick(game, gameId);
     }
   } else {
     // ══ MAUVAISE CARTE ══
@@ -358,6 +355,19 @@ function resolveCorrectClick(game, gameId) {
     game.players[opponentId].socket.emit('game:waitingTransfer', {
       message: "L'adversaire choisit une carte à vous envoyer...",
     });
+    // Timeout de sécurité : auto-transfert après 15s
+    game.timers.push(setTimeout(() => {
+      if (game.phase !== 'choosing' || game.choosingPlayer !== winnerId) return;
+      // Choisir une carte au hasard
+      const hand = game.hands[winnerId];
+      if (hand.length > 0) {
+        const randomPhrase = hand[Math.floor(Math.random() * hand.length)];
+        handleTransferCard(game.players[winnerId].socket, randomPhrase);
+      } else {
+        game.choosingPlayer = null;
+        checkWinOrContinue(game, gameId);
+      }
+    }, 15000));
   } else {
     checkWinOrContinue(game, gameId);
   }
@@ -415,7 +425,7 @@ function checkWinOrContinue(game, gameId) {
     }
   }
 
-  game.timers.push(setTimeout(() => startRound(gameId), 10000));
+  game.timers.push(setTimeout(() => startRound(gameId), 8000));
 }
 
 function emitToAll(game, event, data) {

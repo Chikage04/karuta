@@ -59,6 +59,11 @@ const readyStatus = $('#ready-status');
 
 const incomingBar = $('#incoming-bar');
 const incomingCardPreview = $('#incoming-card-preview');
+const incomingTimerBar = $('#incoming-timer-bar');
+const incomingTimerText = $('#incoming-timer-text');
+
+const transferTimerBar = $('#transfer-timer-bar');
+const transferTimerText = $('#transfer-timer-text');
 
 // ─── État client ────────────────────────────────────────────────────────────
 let myHand = [];
@@ -71,6 +76,44 @@ let oppPositions = new Array(12).fill(null);
 let isPlacementPhase = false;
 let dragState = null; // { sourceIndex, ghostEl, offsetX, offsetY }
 let pendingIncomingCard = null;
+let activeCountdowns = {}; // { key: intervalId }
+
+// ─── Countdown timer visuel ────────────────────────────────────────────────
+function startCountdownTimer(key, duration, barEl, textEl, onExpire) {
+  stopCountdownTimer(key);
+  let remaining = duration;
+  barEl.style.transition = 'none';
+  barEl.style.width = '100%';
+  barEl.classList.remove('urgent');
+  textEl.classList.remove('urgent');
+  textEl.textContent = `${remaining}s`;
+  // Force reflow then animate
+  void barEl.offsetWidth;
+  barEl.style.transition = `width 1s linear`;
+
+  const tick = () => {
+    remaining--;
+    const pct = (remaining / duration) * 100;
+    barEl.style.width = `${pct}%`;
+    textEl.textContent = `${remaining}s`;
+    if (remaining <= 5) {
+      barEl.classList.add('urgent');
+      textEl.classList.add('urgent');
+    }
+    if (remaining <= 0) {
+      stopCountdownTimer(key);
+      if (onExpire) onExpire();
+    }
+  };
+  activeCountdowns[key] = setInterval(tick, 1000);
+}
+
+function stopCountdownTimer(key) {
+  if (activeCountdowns[key]) {
+    clearInterval(activeCountdowns[key]);
+    delete activeCountdowns[key];
+  }
+}
 
 // ─── Synthèse vocale (TTS) ─────────────────────────────────────────────────
 let frenchVoice = null;
@@ -388,6 +431,7 @@ socket.on('round:announce', ({ phrase, roundNumber }) => {
 });
 
 socket.on('round:result', ({ winnerName, phrase, yourHand, opponentHand, youWonRound, tookFromOpponent, reactionTime, yourAvgTime, opponentAvgTime, faultPenaltyPhrase, closeRace }) => {
+  finishPendingIncoming();
   cardsDisabled = true;
   setAllCardsDisabled(true);
   speakerIcon.classList.add('hidden');
@@ -460,12 +504,14 @@ socket.on('game:chooseTransfer', () => {
     card.textContent = phrase;
     card.style.animationDelay = `${index * 0.06}s`;
     card.addEventListener('pointerdown', () => {
-        triggerCardTouchFeedback(card);
-        socket.emit('game:transferCard', { phraseText: phrase });
-        transferOverlay.classList.add('hidden');
+      triggerCardTouchFeedback(card);
+      stopCountdownTimer('transfer');
+      socket.emit('game:transferCard', { phraseText: phrase });
+      transferOverlay.classList.add('hidden');
     });
     transferCards.appendChild(card);
   });
+  startCountdownTimer('transfer', 15, transferTimerBar, transferTimerText);
 });
 
 socket.on('game:waitingTransfer', () => {
@@ -474,6 +520,7 @@ socket.on('game:waitingTransfer', () => {
 });
 
 socket.on('game:transferDone', ({ yourHand, opponentHand, transferredPhrase }) => {
+  stopCountdownTimer('transfer');
   transferOverlay.classList.add('hidden');
   waitingOverlay.classList.add('hidden');
   roundStatus.textContent = 'Carte transférée !';
@@ -598,6 +645,9 @@ function showIncomingPlacement(phrase) {
   incomingBar.classList.remove('hidden');
   yourCardsZone.classList.add('incoming-mode');
   renderIncomingGrid();
+  startCountdownTimer('incoming', 15, incomingTimerBar, incomingTimerText, () => {
+    finishPendingIncoming();
+  });
 }
 
 function renderIncomingGrid() {
@@ -633,6 +683,7 @@ function onIncomingSlotClick(index) {
   if (moreUnplaced.length > 0) {
     showIncomingPlacement(moreUnplaced[0]);
   } else {
+    stopCountdownTimer('incoming');
     exitIncomingMode();
   }
 }
@@ -640,6 +691,7 @@ function onIncomingSlotClick(index) {
 // Auto-place les cartes en attente si un événement de jeu arrive
 function finishPendingIncoming() {
   if (!pendingIncomingCard && !yourCardsZone.classList.contains('incoming-mode')) return;
+  stopCountdownTimer('incoming');
   // Placer toutes les cartes non placées dans les premiers slots libres
   const unplaced = syncAndFindNew(myPositions, myHand);
   for (const phrase of unplaced) {
