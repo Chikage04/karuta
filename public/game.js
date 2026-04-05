@@ -427,6 +427,7 @@ socket.on('round:announce', ({ phrase, roundNumber }) => {
   cardsDisabled = false;
   locked = false;
   setAllCardsDisabled(false);
+  document.querySelectorAll('.card.glow-touched').forEach(c => c.classList.remove('glow-touched'));
   speakPhrase(phrase);
 });
 
@@ -745,6 +746,7 @@ function showCloseRace(data) {
 function onCardPress(phrase, side, cardEl) {
   if (cardsDisabled || locked) return;
   triggerCardTouchFeedback(cardEl);
+  cardEl.classList.add('glow-touched');
   const serverSide = side === 'opponent' ? 'opponent' : 'own';
   socket.emit('game:cardClick', { phraseText: phrase, side: serverSide });
 }
