@@ -1,0 +1,29 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #1c2230; color: #eef; }
+.hidden { display: none !important; }
+#lobby { max-width: 360px; margin: 12vh auto; text-align: center; }
+#lobby input, #lobby button { font-size: 1rem; padding: .6rem 1rem; margin: .4rem; border-radius: 8px; border: none; }
+#lobby button { background: #f45; color: #fff; cursor: pointer; }
+#board { max-width: 1000px; margin: 0 auto; padding: 10px; }
+.row { display: flex; align-items: center; gap: 10px; opacity: .85; font-size: .85rem; }
+.zone { display: flex; gap: 8px; min-height: 90px; padding: 6px; justify-content: center; }
+.zone.active { min-height: 150px; }
+hr { border: none; border-top: 1px dashed #556; margin: 6px 0; }
+.card { width: 96px; border-radius: 8px; background: #2b3348; border: 2px solid #445; overflow: hidden;
+        cursor: pointer; position: relative; flex: 0 0 auto; }
+.card.big { width: 120px; }
+.card img { width: 100%; display: block; }
+.card .ph { display: flex; align-items: center; justify-content: center; height: 120px;
+            text-align: center; font-size: .8rem; padding: 4px; background: #333b52; }
+.card .meta { font-size: .72rem; padding: 2px 4px; display: flex; justify-content: space-between; }
+.card .hp { color: #ff8; }
+.card.selected { outline: 3px solid #4cf; }
+.card .energy { font-size: .7rem; padding: 0 4px 3px; color: #9df; }
+#actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+#actions button { padding: .4rem .8rem; border-radius: 6px; border: none; background: #46c; color: #fff; cursor: pointer; }
+#actions button:disabled { opacity: .4; cursor: default; }
+#hand { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; border-top: 1px solid #445; }
+#log { font-size: .8rem; opacity: .8; max-height: 96px; overflow-y: auto; margin-top: 8px; }
+#overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex;
+           align-items: center; justify-content: center; font-size: 2rem; text-align: center; }
+.badge { font-size: .7rem; background: #556; border-radius: 4px; padding: 1px 5px; }

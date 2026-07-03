@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TCG</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="lobby">
+    <h1>TCG</h1>
+    <input id="nameInput" maxlength="20" placeholder="Ton pseudo" />
+    <button id="joinBtn">Jouer</button>
+    <p id="status"></p>
+  </div>
+
+  <div id="board" class="hidden">
+    <div class="row"><span class="rowlabel">Adversaire</span><div id="oppInfo"></div></div>
+    <div class="zone" id="oppBench"></div>
+    <div class="zone active" id="oppActive"></div>
+    <hr />
+    <div class="zone active" id="youActive"></div>
+    <div class="zone" id="youBench"></div>
+    <div class="row"><span class="rowlabel">Toi</span><div id="youInfo"></div></div>
+    <div id="actions"></div>
+    <div id="hand"></div>
+    <div id="log"></div>
+  </div>
+
+  <div id="overlay" class="hidden"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

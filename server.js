@@ -537,6 +537,92 @@ io.on('connection', (socket) => {
   });
 });
 
+// ─── TCG : jeu additionnel servi sous /tcg, socket namespace /tcg ────────────
+// Additif : n'affecte pas Karuta (namespace par défaut inchangé).
+const { createGame: tcgCreateGame, viewFor: tcgViewFor } = require('./src/engine/state');
+const { applyAction: tcgApplyAction } = require('./src/engine/rules');
+
+(function attachTcg() {
+  const nsp = io.of('/tcg');
+  let waiting = null;              // { socket, name }
+  const tgames = new Map();        // gameId -> game
+  const pgame = new Map();         // socketId -> gameId
+  let idc = 0, seed = 1;
+
+  function broadcast(game) {
+    for (const pid of game.order) {
+      const s = nsp.sockets.get(pid);
+      if (s) s.emit('game:state', tcgViewFor(game, pid));
+    }
+    if (game.phase === 'gameOver') {
+      for (const pid of game.order) {
+        const s = nsp.sockets.get(pid);
+        if (s) s.emit('game:over', {
+          winnerName: game.players[game.winner] ? game.players[game.winner].name : '?',
+          youWon: game.winner === pid,
+        });
+      }
+      cleanup(game.id);
+    }
+  }
+  function start(p1, p2) {
+    const id = `tcg_${++idc}`;
+    const game = tcgCreateGame(
+      id,
+      { pid: p1.socket.id, name: p1.name },
+      { pid: p2.socket.id, name: p2.name },
+      seed++,
+    );
+    tgames.set(id, game);
+    pgame.set(p1.socket.id, id);
+    pgame.set(p2.socket.id, id);
+    p1.socket.emit('matchmaking:found', { opponentName: p2.name });
+    p2.socket.emit('matchmaking:found', { opponentName: p1.name });
+    broadcast(game);
+  }
+  function cleanup(id) {
+    const g = tgames.get(id);
+    if (!g) return;
+    for (const pid of g.order) pgame.delete(pid);
+    tgames.delete(id);
+  }
+
+  nsp.on('connection', (socket) => {
+    socket.on('matchmaking:join', ({ playerName }) => {
+      const name = (playerName || 'Joueur').trim().substring(0, 20) || 'Joueur';
+      if (pgame.has(socket.id)) return;
+      if (waiting && waiting.socket.id === socket.id) return;
+      if (waiting) { const opp = waiting; waiting = null; start(opp, { socket, name }); }
+      else { waiting = { socket, name }; socket.emit('matchmaking:waiting', {}); }
+    });
+    socket.on('matchmaking:cancel', () => {
+      if (waiting && waiting.socket.id === socket.id) waiting = null;
+    });
+    socket.on('game:action', (action) => {
+      const id = pgame.get(socket.id);
+      if (!id) return;
+      const game = tgames.get(id);
+      if (!game) return;
+      const res = tcgApplyAction(game, socket.id, action || {});
+      if (!res.ok) socket.emit('game:error', { message: res.error });
+      broadcast(game);
+    });
+    socket.on('disconnect', () => {
+      if (waiting && waiting.socket.id === socket.id) waiting = null;
+      const id = pgame.get(socket.id);
+      if (id) {
+        const g = tgames.get(id);
+        if (g) {
+          const opp = g.order.find((x) => x !== socket.id);
+          const os = opp && nsp.sockets.get(opp);
+          if (os) os.emit('opponent:disconnected', {});
+          cleanup(id);
+        }
+      }
+    });
+  });
+})();
+
 // ─── Démarrage ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
