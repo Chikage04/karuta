@@ -550,6 +550,20 @@ const { applyAction: tcgApplyAction } = require('./src/engine/rules');
   let idc = 0, seed = 1;
 
   function broadcast(game) {
+    // Mode test (solo) : une seule connexion contrôle les deux côtés.
+    // On envoie toujours la vue du joueur dont c'est le tour (hot-seat).
+    if (game.soloSocketId) {
+      const s = nsp.sockets.get(game.soloSocketId);
+      if (s) s.emit('game:state', { ...tcgViewFor(game, game.turn), solo: true });
+      if (game.phase === 'gameOver') {
+        if (s) s.emit('game:over', {
+          winnerName: game.players[game.winner] ? game.players[game.winner].name : '?',
+          youWon: true, solo: true,
+        });
+        cleanup(game.id);
+      }
+      return;
+    }
     for (const pid of game.order) {
       const s = nsp.sockets.get(pid);
       if (s) s.emit('game:state', tcgViewFor(game, pid));
@@ -580,6 +594,22 @@ const { applyAction: tcgApplyAction } = require('./src/engine/rules');
     p2.socket.emit('matchmaking:found', { opponentName: p1.name });
     broadcast(game);
   }
+  function startSolo(socket, name) {
+    const id = `tcg_solo_${++idc}`;
+    const pidA = socket.id;
+    const pidB = `${socket.id}#B`;
+    const game = tcgCreateGame(
+      id,
+      { pid: pidA, name: `${name} — Côté 1` },
+      { pid: pidB, name: `${name} — Côté 2` },
+      seed++,
+    );
+    game.soloSocketId = socket.id;
+    tgames.set(id, game);
+    pgame.set(socket.id, id);
+    socket.emit('matchmaking:found', { opponentName: 'toi-même (test)' });
+    broadcast(game);
+  }
   function cleanup(id) {
     const g = tgames.get(id);
     if (!g) return;
@@ -588,9 +618,10 @@ const { applyAction: tcgApplyAction } = require('./src/engine/rules');
   }
 
   nsp.on('connection', (socket) => {
-    socket.on('matchmaking:join', ({ playerName }) => {
+    socket.on('matchmaking:join', ({ playerName, solo }) => {
       const name = (playerName || 'Joueur').trim().substring(0, 20) || 'Joueur';
       if (pgame.has(socket.id)) return;
+      if (solo) { startSolo(socket, name); return; }
       if (waiting && waiting.socket.id === socket.id) return;
       if (waiting) { const opp = waiting; waiting = null; start(opp, { socket, name }); }
       else { waiting = { socket, name }; socket.emit('matchmaking:waiting', {}); }
@@ -603,7 +634,9 @@ const { applyAction: tcgApplyAction } = require('./src/engine/rules');
       if (!id) return;
       const game = tgames.get(id);
       if (!game) return;
-      const res = tcgApplyAction(game, socket.id, action || {});
+      // En solo, cette connexion agit pour le joueur dont c'est le tour.
+      const actorPid = game.soloSocketId ? game.turn : socket.id;
+      const res = tcgApplyAction(game, actorPid, action || {});
       if (!res.ok) socket.emit('game:error', { message: res.error });
       broadcast(game);
     });

@@ -26,6 +26,14 @@ $('joinBtn').onclick = () => {
   socket.emit('matchmaking:join', { playerName: name });
   $('status').textContent = 'Recherche d\'un adversaire...';
   $('joinBtn').disabled = true;
+  $('soloBtn').disabled = true;
+};
+$('soloBtn').onclick = () => {
+  const name = $('nameInput').value || 'Joueur';
+  socket.emit('matchmaking:join', { playerName: name, solo: true });
+  $('status').textContent = 'Partie test lancée...';
+  $('joinBtn').disabled = true;
+  $('soloBtn').disabled = true;
 };
 socket.on('matchmaking:waiting', () => { $('status').textContent = 'En attente d\'un adversaire...'; });
 socket.on('matchmaking:found', ({ opponentName }) => {
@@ -35,8 +43,9 @@ socket.on('matchmaking:found', ({ opponentName }) => {
 });
 socket.on('opponent:disconnected', () => { showOverlay('Adversaire déconnecté.'); });
 socket.on('game:error', ({ message }) => { flashLog('⛔ ' + message); });
-socket.on('game:over', ({ winnerName, youWon }) => {
-  showOverlay(youWon ? '🏆 Victoire !' : `Défaite. ${winnerName} gagne.`);
+socket.on('game:over', ({ winnerName, youWon, solo }) => {
+  if (solo) showOverlay(`🏆 ${winnerName} gagne ! (partie test)`);
+  else showOverlay(youWon ? '🏆 Victoire !' : `Défaite. ${winnerName} gagne.`);
 });
 socket.on('game:state', (s) => { state = s; render(); });
 
@@ -73,8 +82,9 @@ function render() {
   if (!state) return;
   const you = state.you, opp = state.opponent;
   $('oppInfo').innerHTML = `${opp.name} — récompenses ${opp.prizesTaken}/3 — main ${opp.handCount} — deck ${opp.deckCount}`;
-  $('youInfo').innerHTML = `${you.name} — récompenses ${you.prizesTaken}/3 — deck ${you.deckCount}` +
-    (state.yourTurn ? ' — <span class="badge">TON TOUR</span>' : ' — tour adverse');
+  const soloTag = state.solo ? '🎮 <span class="badge">MODE TEST</span> tu joues les 2 côtés · ' : '';
+  $('youInfo').innerHTML = soloTag + `${you.name} — récompenses ${you.prizesTaken}/3 — deck ${you.deckCount}` +
+    (state.yourTurn ? ' — <span class="badge">À CE CÔTÉ DE JOUER</span>' : ' — tour adverse');
 
   fill('oppActive', opp.active ? [cardEl(opp.active, { big: true })] : []);
   fill('oppBench', opp.bench.map((b) => cardEl(b)));
