@@ -1,4 +1,5 @@
-const socket = io('/tcg');
+// io peut être absent (ex. Vercel serverless ne sert pas /socket.io/) → on ne plante pas.
+const socket = (typeof io !== 'undefined') ? io('/tcg') : null;
 
 // Métadonnées d'affichage (copie légère de data/cards.js — nom, image, hp, attaques, retraite).
 const CARD_META = {
@@ -22,8 +23,13 @@ const $ = (id) => document.getElementById(id);
 let state = null;            // dernier game:state reçu
 let selectedHandIndex = null;
 
+// ---- Partie test : jouée entièrement dans le navigateur (aucun serveur requis) ----
+let localGame = null;
+let localMode = false;
+
 // ---- Lobby ----
 $('joinBtn').onclick = () => {
+  if (!socket) { $('status').textContent = 'Mode en ligne indisponible ici. Utilise « Partie test ».'; return; }
   const name = $('nameInput').value || 'Joueur';
   socket.emit('matchmaking:join', { playerName: name });
   $('status').textContent = 'Recherche d\'un adversaire...';
@@ -31,25 +37,34 @@ $('joinBtn').onclick = () => {
   $('soloBtn').disabled = true;
 };
 $('soloBtn').onclick = () => {
+  const eng = window.TCGEngine;
+  if (!eng) { $('status').textContent = 'Moteur non chargé — recharge la page.'; return; }
   const name = $('nameInput').value || 'Joueur';
-  socket.emit('matchmaking:join', { playerName: name, solo: true });
-  $('status').textContent = 'Partie test lancée...';
-  $('joinBtn').disabled = true;
-  $('soloBtn').disabled = true;
-};
-socket.on('matchmaking:waiting', () => { $('status').textContent = 'En attente d\'un adversaire...'; });
-socket.on('matchmaking:found', ({ opponentName }) => {
-  $('status').textContent = `Adversaire trouvé : ${opponentName}`;
+  const seed = Math.floor(Math.random() * 1e9) + 1;
+  localMode = true;
+  localGame = eng.createGame('local',
+    { pid: 'A', name: name + ' — Côté 1' },
+    { pid: 'B', name: name + ' — Côté 2' }, seed);
   $('lobby').classList.add('hidden');
   $('board').classList.remove('hidden');
-});
-socket.on('opponent:disconnected', () => { showOverlay('Adversaire déconnecté.'); });
-socket.on('game:error', ({ message }) => { flashLog('⛔ ' + message); });
-socket.on('game:over', ({ winnerName, youWon, solo }) => {
-  if (solo) showOverlay(`🏆 ${winnerName} gagne ! (partie test)`);
-  else showOverlay(youWon ? '🏆 Victoire !' : `Défaite. ${winnerName} gagne.`);
-});
-socket.on('game:state', (s) => { state = s; render(); });
+  renderLocal();
+};
+
+if (socket) {
+  socket.on('matchmaking:waiting', () => { $('status').textContent = 'En attente d\'un adversaire...'; });
+  socket.on('matchmaking:found', ({ opponentName }) => {
+    $('status').textContent = `Adversaire trouvé : ${opponentName}`;
+    $('lobby').classList.add('hidden');
+    $('board').classList.remove('hidden');
+  });
+  socket.on('opponent:disconnected', () => { showOverlay('Adversaire déconnecté.'); });
+  socket.on('game:error', ({ message }) => { flashLog('⛔ ' + message); });
+  socket.on('game:over', ({ winnerName, youWon, solo }) => {
+    if (solo) showOverlay(`🏆 ${winnerName} gagne ! (partie test)`);
+    else showOverlay(youWon ? '🏆 Victoire !' : `Défaite. ${winnerName} gagne.`);
+  });
+  socket.on('game:state', (s) => { state = s; render(); });
+}
 
 // ---- Rendu ----
 function cardEl(inPlay, opts = {}) {
@@ -116,7 +131,7 @@ function renderActions() {
       const b = document.createElement('button');
       b.textContent = `Attaque : ${atk.name} (${atk.cost.map(sym).join('')})`;
       b.disabled = !my;
-      b.onclick = () => socket.emit('game:action', { type: 'attack', payload: { attackIndex: i } });
+      b.onclick = () => sendAction({ type: 'attack', payload: { attackIndex: i } });
       box.appendChild(b);
     });
   }
@@ -125,7 +140,7 @@ function renderActions() {
     const bench = document.createElement('button');
     bench.textContent = 'Poser au banc';
     bench.disabled = !my || you.bench.length >= 2;
-    bench.onclick = () => { socket.emit('game:action', { type: 'playBench', payload: { handIndex: selectedHandIndex } }); selectedHandIndex = null; };
+    bench.onclick = () => { sendAction({ type: 'playBench', payload: { handIndex: selectedHandIndex } }); selectedHandIndex = null; };
     box.appendChild(bench);
   }
   // Retraite
@@ -133,14 +148,14 @@ function renderActions() {
     const r = document.createElement('button');
     r.textContent = 'Retraite (→ banc 0)';
     r.disabled = !my;
-    r.onclick = () => socket.emit('game:action', { type: 'retreat', payload: { benchIndex: 0 } });
+    r.onclick = () => sendAction({ type: 'retreat', payload: { benchIndex: 0 } });
     box.appendChild(r);
   }
   // Passer
   const pass = document.createElement('button');
   pass.textContent = 'Passer le tour';
   pass.disabled = !my;
-  pass.onclick = () => { selectedHandIndex = null; socket.emit('game:action', { type: 'pass', payload: {} }); };
+  pass.onclick = () => { selectedHandIndex = null; sendAction({ type: 'pass', payload: {} }); };
   box.appendChild(pass);
 
   if (selectedHandIndex != null) {
@@ -155,8 +170,28 @@ function tryAttachTo(slot) {
   if (!state.yourTurn || selectedHandIndex == null) return;
   const id = state.you.hand[selectedHandIndex];
   if (!meta(id).energy) return; // seulement les énergies s'attachent
-  socket.emit('game:action', { type: 'attachEnergy', payload: { handIndex: selectedHandIndex, targetSlot: slot } });
+  sendAction({ type: 'attachEnergy', payload: { handIndex: selectedHandIndex, targetSlot: slot } });
   selectedHandIndex = null;
+}
+
+// Envoi d'une action : en solo → moteur local ; en ligne → serveur.
+function sendAction(action) {
+  if (localMode) {
+    const res = window.TCGEngine.applyAction(localGame, localGame.turn, action);
+    if (!res.ok) flashLog('⛔ ' + res.error);
+    renderLocal();
+  } else if (socket) {
+    sendAction(action);
+  }
+}
+function renderLocal() {
+  const eng = window.TCGEngine;
+  state = Object.assign({}, eng.viewFor(localGame, localGame.turn), { solo: true });
+  render();
+  if (localGame.phase === 'gameOver') {
+    const w = localGame.players[localGame.winner];
+    showOverlay(`🏆 ${w ? w.name : '?'} gagne ! (partie test)`);
+  }
 }
 
 function flashLog(msg) { const l = $('log'); if (l) l.insertAdjacentHTML('afterbegin', `<div>${msg}</div>`); }
