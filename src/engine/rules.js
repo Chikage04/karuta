@@ -96,7 +96,8 @@ function applyAction(game, pid, action) {
       if (attack.effect && attack.effect.kind === 'copyAttack') {
         base = copiedBaseDamage(attack.effect, defenderCard);
       }
-      const dmg = computeDamage({ attackerCard, defenderCard, baseDamage: base });
+      const attackerAllies = [p.active.cardId, ...p.bench.map((b) => b.cardId)];
+      const dmg = computeDamage({ attackerCard, defenderCard, baseDamage: base, attackerAllies });
       opp.active.damage += dmg;
       game.log.push(`${p.name} utilise ${attack.name} : ${dmg} dégâts.`);
       resolveAttackEffect(attack.effect, { defenderInPlay: opp.active, log: game.log });

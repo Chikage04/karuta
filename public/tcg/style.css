@@ -19,6 +19,17 @@ hr { border: none; border-top: 1px dashed #556; margin: 6px 0; }
 .card .hp { color: #ff8; }
 .card.selected { outline: 3px solid #4cf; }
 .card .energy { font-size: .7rem; padding: 0 4px 3px; color: #9df; }
+/* Couleur de cadre par type (visible même sans image). */
+.card.type-fire      { border-color: #e8613c; box-shadow: 0 0 10px #e8613c66; }
+.card.type-water     { border-color: #4aa3e8; box-shadow: 0 0 10px #4aa3e866; }
+.card.type-darkness  { border-color: #7d6f96; box-shadow: 0 0 10px #7d6f9666; }
+.card.type-fairy     { border-color: #e56faf; box-shadow: 0 0 10px #e56faf66; }
+.card.type-colorless { border-color: #cbc6ba; box-shadow: 0 0 8px #cbc6ba55; }
+.card.type-fire .ph      { background: linear-gradient(160deg,#5a2a1e,#3a2320); }
+.card.type-water .ph     { background: linear-gradient(160deg,#1e3a5a,#20303a); }
+.card.type-darkness .ph  { background: linear-gradient(160deg,#2e2740,#221d2e); }
+.card.type-fairy .ph     { background: linear-gradient(160deg,#5a2044,#3a2030); }
+.card.type-colorless .ph { background: linear-gradient(160deg,#3a3b42,#2b2c30); }
 #actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 #actions button { padding: .4rem .8rem; border-radius: 6px; border: none; background: #46c; color: #fff; cursor: pointer; }
 #actions button:disabled { opacity: .4; cursor: default; }

@@ -1,7 +1,7 @@
 const CARDS = {
   fay: {
-    id: 'fay', name: 'Fay', image: 'assets/cards/fay.png',
-    kind: 'pokemon', hp: 110, type: 'fire', stage: 'basic', tags: [],
+    id: 'fay', name: 'Fay', image: 'assets/cards/fay.webp',
+    kind: 'pokemon', hp: 110, type: 'fire', stage: 'basic', tags: ['blue-solo'],
     weakness: { type: 'water', amount: 10, mode: 'add' },
     retreat: 2,
     ability: {
@@ -13,13 +13,15 @@ const CARDS = {
     ],
   },
   groud: {
-    id: 'groud', name: 'Groud VSTAR', image: 'assets/cards/groud.png',
-    kind: 'pokemon', hp: 10, type: 'darkness', stage: 'basic', tags: [],
+    id: 'groud', name: 'Groud VSTAR', image: 'assets/cards/groud.webp',
+    kind: 'pokemon', hp: 10, type: 'darkness', stage: 'basic', tags: ['blue-solo'],
     weakness: null,
     retreat: 1,
     ability: {
       name: 'Groudance', trigger: 'passive',
-      effect: { kind: 'damageMultiplier', ifDefenderTag: 'blue-solo', factor: 2 },
+      // Aura d'équipe : tant que Groud est en jeu (actif OU banc), les Pokémon
+      // "blue-solo" de son côté infligent +20 dégâts.
+      effect: { kind: 'teamAura', requiresTag: 'blue-solo', bonus: 20 },
     },
     attacks: [
       { name: 'Amnésie', cost: ['darkness', 'fairy'], damage: 30,
@@ -27,8 +29,8 @@ const CARDS = {
     ],
   },
   vingt2: {
-    id: 'vingt2', name: 'vingt2', image: 'assets/cards/vingt2.png',
-    kind: 'pokemon', hp: 70, type: 'fairy', stage: 'basic', tags: [],
+    id: 'vingt2', name: 'vingt2', image: 'assets/cards/vingt2.webp',
+    kind: 'pokemon', hp: 70, type: 'fairy', stage: 'basic', tags: ['blue-solo'],
     weakness: { type: 'darkness', amount: 2, mode: 'multiply' },
     retreat: 2,
     ability: {
@@ -38,6 +40,20 @@ const CARDS = {
     attacks: [
       { name: 'Gribouillage', cost: ['colorless', 'fairy', 'fairy'], damage: 0,
         effect: { kind: 'copyAttack', target: 'defender', penalty: 20 } },
+    ],
+  },
+  jelee: {
+    id: 'jelee', name: 'Jelee', image: 'assets/cards/jelee.webp',
+    kind: 'pokemon', hp: 100, type: 'darkness', stage: 'basic', tags: ['blue-solo'],
+    weakness: { type: 'darkness', amount: 20, mode: 'add' },
+    retreat: 3,
+    ability: {
+      name: 'Anonyme', trigger: 'passive',
+      // "Devient invisible" : ne subit que la moitié des dégâts des attaques adverses.
+      effect: { kind: 'damageReduction', factor: 0.5 },
+    },
+    attacks: [
+      { name: 'Horde de muridés', cost: ['darkness', 'colorless'], damage: 20, effect: null },
     ],
   },
   'energy-fire': { id: 'energy-fire', name: 'Énergie Feu', kind: 'energy', type: 'fire', image: 'assets/cards/energy-fire.png' },
@@ -58,8 +74,9 @@ const DEFAULT_DECK = [
   { id: 'fay', count: 2 },
   { id: 'groud', count: 2 },
   { id: 'vingt2', count: 2 },
+  { id: 'jelee', count: 2 },
   { id: 'energy-fire', count: 4 },
-  { id: 'energy-darkness', count: 3 },
+  { id: 'energy-darkness', count: 4 },
   { id: 'energy-fairy', count: 4 },
   { id: 'energy-colorless', count: 3 },
 ];

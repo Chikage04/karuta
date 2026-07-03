@@ -15,10 +15,27 @@ test('fay bonus adds +30 vs a chikage-tagged defender', () => {
   assert.strictEqual(dmg, 130);
 });
 
-test('groud multiplier doubles damage vs a blue-solo defender', () => {
-  const defender = { ...getCard('vingt2'), tags: ['blue-solo'], weakness: null };
-  const dmg = computeDamage({ attackerCard: getCard('groud'), defenderCard: defender, baseDamage: 30 });
-  assert.strictEqual(dmg, 60);
+test('team aura: Groud in play grants +20 to a blue-solo attacker', () => {
+  // Fay (blue-solo) frappe avec Groud parmi ses alliés → +20 en plus du +10 de Fast learner
+  const dmg = computeDamage({
+    attackerCard: getCard('fay'), defenderCard: getCard('vingt2'),
+    baseDamage: 100, attackerAllies: ['fay', 'groud'],
+  });
+  assert.strictEqual(dmg, 130); // 100 + 10 (else) + 20 (aura)
+});
+
+test('no team aura without Groud in play', () => {
+  const dmg = computeDamage({
+    attackerCard: getCard('fay'), defenderCard: getCard('vingt2'),
+    baseDamage: 100, attackerAllies: ['fay'],
+  });
+  assert.strictEqual(dmg, 110); // 100 + 10, pas d'aura
+});
+
+test('Jelee "Anonyme" halves incoming damage', () => {
+  const atk = { type: 'fire', tags: [], ability: null }; // pas de faiblesse (Jelee = ténèbres)
+  const dmg = computeDamage({ attackerCard: atk, defenderCard: getCard('jelee'), baseDamage: 100 });
+  assert.strictEqual(dmg, 50); // moitié
 });
 
 test('weakness multiply doubles final damage', () => {

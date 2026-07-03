@@ -11,11 +11,18 @@ test('fay is a fire pokemon with a 100-damage attack', () => {
   assert.deepStrictEqual(fay.attacks[0].cost, ['fire', 'fire', 'fire']);
 });
 
-test('groud ability is a conditional damage multiplier', () => {
+test('groud ability is a blue-solo team aura', () => {
   const g = getCard('groud');
   assert.strictEqual(g.hp, 10);
-  assert.strictEqual(g.ability.effect.kind, 'damageMultiplier');
-  assert.strictEqual(g.ability.effect.ifDefenderTag, 'blue-solo');
+  assert.strictEqual(g.ability.effect.kind, 'teamAura');
+  assert.strictEqual(g.ability.effect.requiresTag, 'blue-solo');
+  assert.ok(g.tags.includes('blue-solo'));
+});
+
+test('all four Blue Solo cards carry the blue-solo tag', () => {
+  for (const id of ['fay', 'groud', 'vingt2', 'jelee']) {
+    assert.ok(getCard(id).tags.includes('blue-solo'), `${id} missing tag`);
+  }
 });
 
 test('getCard throws on unknown id', () => {

@@ -2,12 +2,14 @@ const socket = io('/tcg');
 
 // Métadonnées d'affichage (copie légère de data/cards.js — nom, image, hp, attaques, retraite).
 const CARD_META = {
-  fay: { name: 'Fay', image: 'assets/cards/fay.png', hp: 110, retreat: 2,
+  fay: { name: 'Fay', image: 'assets/cards/fay.webp', hp: 110, retreat: 2, type: 'fire',
          attacks: [{ name: 'Délit de faciès', cost: ['fire','fire','fire'], damage: 100 }] },
-  groud: { name: 'Groud VSTAR', image: 'assets/cards/groud.png', hp: 10, retreat: 1,
+  groud: { name: 'Groud VSTAR', image: 'assets/cards/groud.webp', hp: 10, retreat: 1, type: 'darkness',
            attacks: [{ name: 'Amnésie', cost: ['darkness','fairy'], damage: 30 }] },
-  vingt2: { name: 'vingt2', image: 'assets/cards/vingt2.png', hp: 70, retreat: 2,
+  vingt2: { name: 'vingt2', image: 'assets/cards/vingt2.webp', hp: 70, retreat: 2, type: 'fairy',
             attacks: [{ name: 'Gribouillage', cost: ['colorless','fairy','fairy'], damage: 0 }] },
+  jelee: { name: 'Jelee', image: 'assets/cards/jelee.webp', hp: 100, retreat: 3, type: 'darkness',
+           attacks: [{ name: 'Horde de muridés', cost: ['darkness','colorless'], damage: 20 }] },
   'energy-fire': { name: 'Énergie Feu', image: 'assets/cards/energy-fire.png', energy: 'fire' },
   'energy-water': { name: 'Énergie Eau', image: 'assets/cards/energy-water.png', energy: 'water' },
   'energy-darkness': { name: 'Énergie Ténèbres', image: 'assets/cards/energy-darkness.png', energy: 'darkness' },
@@ -53,7 +55,7 @@ socket.on('game:state', (s) => { state = s; render(); });
 function cardEl(inPlay, opts = {}) {
   const m = meta(inPlay.cardId);
   const el = document.createElement('div');
-  el.className = 'card' + (opts.big ? ' big' : '');
+  el.className = 'card type-' + (m.type || 'colorless') + (opts.big ? ' big' : '');
   const imgHtml = m.image
     ? `<img src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))" alt="${m.name}">`
     : `<div class="ph">${m.name}</div>`;
@@ -70,7 +72,7 @@ function sym(t) { return ({ fire:'🔥', water:'💧', darkness:'🌑', fairy:'�
 function handCardEl(id, index) {
   const m = meta(id);
   const el = document.createElement('div');
-  el.className = 'card' + (selectedHandIndex === index ? ' selected' : '');
+  el.className = 'card type-' + (m.type || 'colorless') + (selectedHandIndex === index ? ' selected' : '');
   el.innerHTML = (m.image
     ? `<img src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))">`
     : `<div class="ph">${m.name}</div>`) + `<div class="meta"><span>${m.name}</span></div>`;
