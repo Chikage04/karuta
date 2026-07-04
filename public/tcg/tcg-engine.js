@@ -436,5 +436,5 @@ function applyAction(game, pid, action) {
 module.exports = { applyAction, startTurn, passTurn };
 
 };
-window.TCGEngine=Object.assign({},req("state"),req("rules"));
+window.TCGEngine=Object.assign({},req("cards"),req("deck"),req("energy"),req("damage"),req("effects"),req("state"),req("rules"));
 })();

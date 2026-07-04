@@ -1,23 +1,18 @@
 // io peut être absent (ex. Vercel serverless ne sert pas /socket.io/) → on ne plante pas.
 const socket = (typeof io !== 'undefined') ? io('/tcg') : null;
 
-// Métadonnées d'affichage (copie légère de data/cards.js — nom, image, hp, attaques, retraite).
-const CARD_META = {
-  fay: { name: 'Fay', image: 'assets/cards/fay.webp', hp: 110, retreat: 2, type: 'fire',
-         attacks: [{ name: 'Délit de faciès', cost: ['fire','fire','fire'], damage: 100 }] },
-  groud: { name: 'Groud VSTAR', image: 'assets/cards/groud.webp', hp: 10, retreat: 1, type: 'darkness',
-           attacks: [{ name: 'Amnésie', cost: ['darkness','fairy'], damage: 30 }] },
-  vingt2: { name: 'vingt2', image: 'assets/cards/vingt2.webp', hp: 70, retreat: 2, type: 'fairy',
-            attacks: [{ name: 'Gribouillage', cost: ['colorless','fairy','fairy'], damage: 0 }] },
-  jelee: { name: 'Jelee', image: 'assets/cards/jelee.webp', hp: 100, retreat: 3, type: 'darkness',
-           attacks: [{ name: 'Horde de muridés', cost: ['darkness','colorless'], damage: 20 }] },
-  'energy-fire': { name: 'Énergie Feu', image: 'assets/cards/energy-fire.png', energy: 'fire' },
-  'energy-water': { name: 'Énergie Eau', image: 'assets/cards/energy-water.png', energy: 'water' },
-  'energy-darkness': { name: 'Énergie Ténèbres', image: 'assets/cards/energy-darkness.png', energy: 'darkness' },
-  'energy-fairy': { name: 'Énergie Fée', image: 'assets/cards/energy-fairy.png', energy: 'fairy' },
-  'energy-colorless': { name: 'Énergie Incolore', image: 'assets/cards/energy-colorless.png', energy: 'colorless' },
-};
-function meta(id) { return CARD_META[id] || { name: id, image: '' }; }
+// Toutes les infos carte viennent du moteur (source unique de vérité).
+const engine = window.TCGEngine || {};
+function safeCard(id) { try { return engine.getCard(id); } catch (e) { return null; } }
+function meta(id) {
+  const c = safeCard(id);
+  if (!c) return { name: id, image: '' };
+  return {
+    name: c.name, image: c.image || '', hp: c.hp, type: c.type,
+    attacks: c.attacks, retreat: c.retreat, ability: c.ability,
+    kind: c.kind, energy: c.kind === 'energy' ? c.type : null,
+  };
+}
 
 const $ = (id) => document.getElementById(id);
 let state = null;            // dernier game:state reçu
@@ -70,12 +65,12 @@ if (socket) {
 function cardEl(inPlay, opts = {}) {
   const m = meta(inPlay.cardId);
   const el = document.createElement('div');
-  el.className = 'card type-' + (m.type || 'colorless') + (opts.big ? ' big' : '');
+  el.className = 'card type-' + (m.type || 'colorless') + (opts.big ? ' big' : '') + (opts.droppable ? ' drop' : '');
   const imgHtml = m.image
     ? `<img class="art" src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))" alt="${m.name}">`
     : `<div class="ph">${m.name}</div>`;
   const hpLeft = m.hp != null ? Math.max(0, m.hp - (inPlay.damage || 0)) : null;
-  const nrg = (inPlay.energy || []).map(sym).join('');
+  const nrg = pips(inPlay.energy || []);
   el.innerHTML = imgHtml
     + (hpLeft != null ? `<span class="hpbadge">${hpLeft}<small>PV</small></span>` : '')
     + (nrg ? `<span class="nrgbar">${nrg}</span>` : '');
@@ -83,16 +78,25 @@ function cardEl(inPlay, opts = {}) {
   if (opts.selected) el.classList.add('selected');
   return el;
 }
-function sym(t) { return ({ fire:'🔥', water:'💧', darkness:'🌑', fairy:'🎀', colorless:'⭐' })[t] || t; }
+function sym(t) { return ({ fire: '🔥', water: '💧', darkness: '🌑', fairy: '🎀', colorless: '⭐' })[t] || t; }
+// Pastilles colorées par type d'énergie (coûts + énergies attachées).
+function pips(list) { return (list || []).map((t) => `<span class="pip pip-${t}"></span>`).join(''); }
 
 function handCardEl(id, index) {
   const m = meta(id);
   const el = document.createElement('div');
-  el.className = 'card hand-card type-' + (m.type || 'colorless') + (selectedHandIndex === index ? ' selected' : '');
-  const imgHtml = m.image
-    ? `<img class="art" src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))">`
-    : `<div class="ph">${m.name}</div>`;
-  el.innerHTML = imgHtml + `<span class="cap">${m.name}</span>`;
+  const sel = selectedHandIndex === index ? ' selected' : '';
+  if (m.energy) {
+    // Carte d'énergie : couleur vive du type correspondant.
+    el.className = 'card hand-card energy-card type-' + m.energy + sel;
+    el.innerHTML = `<span class="edisc"><span class="pip pip-${m.energy}"></span></span><span class="ename">${m.name}</span>`;
+  } else {
+    el.className = 'card hand-card type-' + (m.type || 'colorless') + sel;
+    const imgHtml = m.image
+      ? `<img class="art" src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))">`
+      : `<div class="ph">${m.name}</div>`;
+    el.innerHTML = imgHtml + `<span class="cap">${m.name}</span>`;
+  }
   el.onclick = () => { selectedHandIndex = (selectedHandIndex === index ? null : index); render(); };
   return el;
 }
@@ -105,67 +109,103 @@ function render() {
   $('youInfo').innerHTML = soloTag + `${you.name} — récompenses ${you.prizesTaken}/3 — deck ${you.deckCount}` +
     (state.yourTurn ? ' — <span class="badge">À CE CÔTÉ DE JOUER</span>' : ' — tour adverse');
 
+  // Est-on en train d'attacher une énergie ? → les Pokémon valides clignotent.
+  const attaching = !!(state.yourTurn && selectedHandIndex != null
+    && meta(you.hand[selectedHandIndex]).energy);
+
   fill('oppActive', opp.active ? [cardEl(opp.active, { big: true })] : []);
   fill('oppBench', opp.bench.map((b) => cardEl(b)));
 
   fill('youActive', you.active ? [cardEl(you.active, {
-    big: true,
+    big: true, droppable: attaching,
     onClick: () => tryAttachTo('active'),
   })] : []);
-  fill('youBench', you.bench.map((b, i) => cardEl(b, { onClick: () => tryAttachTo('bench:' + i) })));
+  fill('youBench', you.bench.map((b, i) => cardEl(b, { droppable: attaching, onClick: () => tryAttachTo('bench:' + i) })));
 
   fill('hand', you.hand.map((id, i) => handCardEl(id, i)));
+  $('turnHint').textContent = turnHintText();
   renderActions();
   $('log').innerHTML = (state.log || []).map((l) => `<div>${l}</div>`).join('');
 }
 
+function turnHintText() {
+  if (!state.yourTurn) return '⏳ Tour adverse…';
+  if (selectedHandIndex != null) {
+    const c = safeCard(state.you.hand[selectedHandIndex]);
+    if (c && c.kind === 'energy') return `⚡ ${c.name} sélectionnée — clique un de TES Pokémon (ils clignotent) pour l'attacher.`;
+    if (c && c.kind === 'pokemon' && c.stage === 'basic') return `🃏 ${c.name} prêt — clique « Poser au banc » ci-dessous.`;
+    return 'Cette carte ne se joue pas directement. Reclique-la pour désélectionner.';
+  }
+  return 'À toi ! Attache une énergie (clique-la dans ta main, puis un Pokémon), pose un Pokémon Basic, ou attaque.';
+}
+
 function fill(id, nodes) { const c = $(id); c.innerHTML = ''; nodes.forEach((n) => c.appendChild(n)); }
+
+function groupEl(label) {
+  const g = document.createElement('div'); g.className = 'act-group';
+  const h = document.createElement('div'); h.className = 'act-group-label'; h.textContent = label;
+  g.appendChild(h);
+  return g;
+}
+function mkBtn(label, enabled, onClick, title) {
+  const b = document.createElement('button');
+  b.className = 'act'; b.textContent = label; b.disabled = !enabled; b.onclick = onClick;
+  if (title) b.title = title;
+  return b;
+}
 
 function renderActions() {
   const box = $('actions'); box.innerHTML = '';
   const my = state.yourTurn;
   const you = state.you;
+  const oppCard = state.opponent.active ? safeCard(state.opponent.active.cardId) : null;
 
-  // Attaques de l'actif
-  const activeMeta = you.active ? meta(you.active.cardId) : null;
-  if (activeMeta && activeMeta.attacks) {
-    activeMeta.attacks.forEach((atk, i) => {
+  // Carte de main sélectionnée → action contextuelle (poser un Basic au banc)
+  if (my && selectedHandIndex != null) {
+    const c = safeCard(you.hand[selectedHandIndex]);
+    if (c && c.kind === 'pokemon' && c.stage === 'basic') {
+      const g = groupEl('Carte sélectionnée');
+      const b = mkBtn(`Poser ${c.name} au banc`, you.bench.length < 2,
+        () => { sendAction({ type: 'playBench', payload: { handIndex: selectedHandIndex } }); selectedHandIndex = null; },
+        you.bench.length >= 2 ? 'Banc plein (2 max)' : '');
+      b.classList.add('act-play');
+      g.appendChild(b); box.appendChild(g);
+    }
+  }
+
+  // Attaques de l'actif — avec dégâts, coût, et raison si indisponible
+  if (you.active) {
+    const activeCard = safeCard(you.active.cardId);
+    const g = groupEl('Attaques');
+    (activeCard && activeCard.attacks || []).forEach((atk, i) => {
+      const cost = (oppCard && engine.attackCost) ? engine.attackCost(atk, oppCard) : atk.cost;
+      const enough = oppCard && engine.energyCostMet && engine.energyCostMet(cost, you.active.energy);
+      const usable = my && enough;
       const b = document.createElement('button');
-      b.textContent = `Attaque : ${atk.name} (${atk.cost.map(sym).join('')})`;
-      b.disabled = !my;
+      b.className = 'act act-attack' + (usable ? '' : ' locked');
+      b.disabled = !usable;
+      b.innerHTML = `<span class="a-name">${atk.name}</span>`
+        + `<span class="a-dmg">${atk.damage ? atk.damage : '—'}</span>`
+        + `<span class="a-cost">${pips(cost)}</span>`
+        + (my && !enough ? `<span class="a-lock">⚡ énergie insuffisante</span>` : '');
       b.onclick = () => sendAction({ type: 'attack', payload: { attackIndex: i } });
-      box.appendChild(b);
+      g.appendChild(b);
     });
+    box.appendChild(g);
   }
-  // Jouer le Pokémon sélectionné au banc
-  if (selectedHandIndex != null) {
-    const bench = document.createElement('button');
-    bench.textContent = 'Poser au banc';
-    bench.disabled = !my || you.bench.length >= 2;
-    bench.onclick = () => { sendAction({ type: 'playBench', payload: { handIndex: selectedHandIndex } }); selectedHandIndex = null; };
-    box.appendChild(bench);
-  }
-  // Retraite
-  if (you.active && you.bench.length > 0) {
-    const r = document.createElement('button');
-    r.textContent = 'Retraite (→ banc 0)';
-    r.disabled = !my;
-    r.onclick = () => sendAction({ type: 'retreat', payload: { benchIndex: 0 } });
-    box.appendChild(r);
-  }
-  // Passer
-  const pass = document.createElement('button');
-  pass.textContent = 'Passer le tour';
-  pass.disabled = !my;
-  pass.onclick = () => { selectedHandIndex = null; sendAction({ type: 'pass', payload: {} }); };
-  box.appendChild(pass);
 
-  if (selectedHandIndex != null) {
-    const hint = document.createElement('span');
-    hint.className = 'badge';
-    hint.textContent = 'Carte sélectionnée : clique un Pokémon pour attacher l\'énergie, ou "Poser au banc".';
-    box.appendChild(hint);
+  // Autres actions
+  const g2 = groupEl('Autres');
+  if (you.active && you.bench.length > 0) {
+    const rcost = (safeCard(you.active.cardId) || {}).retreat || 0;
+    const canRetreat = my && you.active.energy.length >= rcost;
+    g2.appendChild(mkBtn(`Retraite — échanger l'actif (−${rcost}⚡)`, canRetreat,
+      () => sendAction({ type: 'retreat', payload: { benchIndex: 0 } }),
+      canRetreat ? '' : "Pas assez d'énergie sur l'actif"));
   }
+  g2.appendChild(mkBtn('Passer le tour ▶', my,
+    () => { selectedHandIndex = null; sendAction({ type: 'pass', payload: {} }); }));
+  box.appendChild(g2);
 }
 
 function tryAttachTo(slot) {

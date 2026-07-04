@@ -22,25 +22,33 @@
   </div>
 
   <div id="board" class="hidden">
-    <div class="hud hud-opp"><span class="who">Adversaire</span><span id="oppInfo"></span></div>
-    <section class="zone-wrap">
-      <div class="bench" id="oppBench"></div>
-      <div class="active-slot" id="oppActive"></div>
-    </section>
+    <div class="play">
+      <div class="hud hud-opp"><span class="who">Adversaire</span><span id="oppInfo"></span></div>
+      <section class="zone-wrap">
+        <div class="bench" id="oppBench"></div>
+        <div class="active-slot" id="oppActive"></div>
+      </section>
 
-    <div class="divider"><span>VS</span></div>
+      <div class="divider"><span>VS</span></div>
 
-    <section class="zone-wrap">
-      <div class="active-slot" id="youActive"></div>
-      <div class="bench" id="youBench"></div>
-    </section>
-    <div class="hud hud-you"><span class="who">Toi</span><span id="youInfo"></span></div>
+      <section class="zone-wrap">
+        <div class="active-slot" id="youActive"></div>
+        <div class="bench" id="youBench"></div>
+      </section>
+      <div class="hud hud-you"><span class="who">Toi</span><span id="youInfo"></span></div>
+    </div>
 
     <div id="log"></div>
 
     <div class="dock">
+      <div id="turnHint" class="turn-hint"></div>
       <div id="actions"></div>
-      <div class="tray"><div id="hand"></div></div>
+      <div class="tray">
+        <div class="tray-inner">
+          <div class="tray-label">Ta main — clique une carte pour la jouer</div>
+          <div id="hand"></div>
+        </div>
+      </div>
     </div>
   </div>
 

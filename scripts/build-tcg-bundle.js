@@ -24,7 +24,7 @@ for (const [key, rel] of Object.entries(files)) {
   const code = fs.readFileSync(path.join(root, rel), 'utf8');
   out += `defs[${JSON.stringify(key)}]=function(module,exports,require){\n${code}\n};\n`;
 }
-out += 'window.TCGEngine=Object.assign({},req("state"),req("rules"));\n';
+out += 'window.TCGEngine=Object.assign({},req("cards"),req("deck"),req("energy"),req("damage"),req("effects"),req("state"),req("rules"));\n';
 out += '})();\n';
 
 const dest = path.join(root, 'public/tcg/tcg-engine.js');

@@ -62,7 +62,11 @@ body {
 #status { margin: 2px 0 0; min-height: 1.1em; font-size: .85rem; color: var(--cyan); }
 
 /* ─── Plateau ────────────────────────────────────────────────────────────── */
-#board { width: 100%; max-width: 1080px; margin: 0 auto; padding: 14px 16px 188px; min-height: 100vh; }
+#board { width: 100%; max-width: 1080px; margin: 0 auto; height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+.play {
+  flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; justify-content: flex-start; gap: 4px; padding: 12px 14px;
+}
 
 .hud {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -77,8 +81,8 @@ body {
 .badge { font-size: .72rem; background: var(--blue); color: #05122b; border-radius: 999px; padding: 2px 9px; font-weight: 800; }
 
 .zone-wrap {
-  display: flex; align-items: center; justify-content: center; gap: 26px;
-  padding: 8px; min-height: 150px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+  padding: 4px; min-height: 118px; flex-wrap: wrap;
 }
 .bench { display: flex; gap: 10px; flex: 0 0 auto; min-width: 96px; justify-content: center; }
 .active-slot { display: flex; justify-content: center; position: relative; }
@@ -100,12 +104,12 @@ body {
 
 /* ─── Cartes ─────────────────────────────────────────────────────────────── */
 .card {
-  width: 86px; border-radius: 12px; overflow: hidden; position: relative; flex: 0 0 auto;
+  width: 76px; border-radius: 12px; overflow: hidden; position: relative; flex: 0 0 auto;
   background: #0d1428; border: 2px solid #2a3350; cursor: pointer;
   transition: transform .12s ease, box-shadow .12s ease;
 }
 .card:hover { transform: translateY(-5px); }
-.card.big { width: 132px; }
+.card.big { width: 118px; }
 .card .art { display: block; width: 100%; }
 .card .ph {
   display: flex; align-items: center; justify-content: center; text-align: center;
@@ -118,10 +122,40 @@ body {
 }
 .card .hpbadge small { font-size: .58rem; opacity: .8; margin-left: 1px; }
 .card .nrgbar {
-  position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: .74rem;
-  letter-spacing: 1px; background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .82));
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; display: flex; gap: 3px; flex-wrap: wrap;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .82));
 }
 .card.selected { outline: 3px solid var(--cyan); outline-offset: 1px; }
+
+/* Pastilles de couleur d'énergie (coûts + énergies attachées). */
+.pip {
+  display: inline-block; width: 13px; height: 13px; border-radius: 50%; vertical-align: -2px;
+  border: 1px solid rgba(0, 0, 0, .45); box-shadow: inset 0 1px 2px rgba(255, 255, 255, .35);
+}
+.pip-fire      { background: radial-gradient(circle at 35% 30%, #ffc08a, #ef5a2a); }
+.pip-water     { background: radial-gradient(circle at 35% 30%, #a9d9ff, #2f8fe0); }
+.pip-darkness  { background: radial-gradient(circle at 35% 30%, #b9a6df, #5b3f92); }
+.pip-fairy     { background: radial-gradient(circle at 35% 30%, #ffb0d6, #eb3f92); }
+.pip-colorless { background: radial-gradient(circle at 35% 30%, #f2eede, #b7ae95); }
+
+/* Carte d'énergie : couleur vive de son type. */
+.energy-card { aspect-ratio: 5 / 7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px; text-align: center; }
+.energy-card .edisc {
+  width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .45), inset 0 0 10px rgba(255, 255, 255, .35);
+}
+.energy-card .edisc .pip { width: 30px; height: 30px; }
+.energy-card .ename { font-size: .7rem; font-weight: 800; line-height: 1.15; }
+.energy-card.type-fire      { background: linear-gradient(160deg, #7a3016, #331810); }
+.energy-card.type-fire .edisc      { background: radial-gradient(circle at 35% 30%, #ffbf8a, #e8431c); }
+.energy-card.type-water     { background: linear-gradient(160deg, #16436e, #10202f); }
+.energy-card.type-water .edisc     { background: radial-gradient(circle at 35% 30%, #b7e0ff, #2f8fe0); }
+.energy-card.type-darkness  { background: linear-gradient(160deg, #362a55, #1c1730); }
+.energy-card.type-darkness .edisc  { background: radial-gradient(circle at 35% 30%, #c2b0e8, #5b3f92); }
+.energy-card.type-fairy     { background: linear-gradient(160deg, #6b1f49, #33172a); }
+.energy-card.type-fairy .edisc     { background: radial-gradient(circle at 35% 30%, #ffbcdd, #eb3f92); }
+.energy-card.type-colorless { background: linear-gradient(160deg, #4a4636, #26251c); }
+.energy-card.type-colorless .edisc { background: radial-gradient(circle at 35% 30%, #faf6e8, #b7ae95); }
 
 /* Couleur de cadre + halo par type. */
 .card.type-fire      { border-color: #e8613c; box-shadow: 0 0 14px #e8613c55; }
@@ -137,24 +171,54 @@ body {
 
 /* ─── Dock : actions + main ──────────────────────────────────────────────── */
 .dock {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
-  background: linear-gradient(180deg, transparent, rgba(6, 9, 18, .96) 34%);
+  flex: 0 0 auto; z-index: 5; max-height: 48vh; overflow-y: auto;
+  background: rgba(8, 12, 24, .97); border-top: 1px solid var(--line);
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
 }
-#actions {
-  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-  max-width: 1080px; margin: 0 auto 8px;
+/* Instruction : que faire maintenant */
+.turn-hint {
+  max-width: 760px; margin: 0 auto 10px; text-align: center; font-size: .9rem; line-height: 1.35;
+  color: var(--ink); background: rgba(61, 123, 255, .14);
+  border: 1px solid rgba(61, 123, 255, .42); border-radius: 12px; padding: 9px 14px;
 }
-#actions button {
-  padding: .5rem .9rem; border-radius: 10px; border: 1px solid var(--line);
-  background: rgba(28, 40, 72, .9); color: var(--ink); cursor: pointer; font-weight: 600; font-size: .85rem;
+
+#actions { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; align-items: flex-start; margin: 0 auto 10px; }
+.act-group { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.act-group-label { font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); text-align: center; }
+
+.act {
+  padding: .55rem 1rem; border-radius: 10px; border: 1px solid var(--line);
+  background: rgba(28, 40, 72, .92); color: var(--ink); cursor: pointer; font-weight: 600; font-size: .86rem;
 }
-#actions button:hover:not(:disabled) { border-color: var(--blue); }
-#actions button:disabled { opacity: .35; cursor: default; }
-#actions .badge { align-self: center; background: rgba(28,40,72,.9); color: var(--muted); font-weight: 600; }
+.act:hover:not(:disabled) { border-color: var(--blue); }
+.act:disabled { opacity: .42; cursor: default; }
+
+.act-attack {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 1px 12px;
+  text-align: left; min-width: 210px;
+  background: linear-gradient(100deg, rgba(61, 123, 255, .28), rgba(28, 40, 72, .92));
+  border-color: rgba(79, 216, 255, .5);
+}
+.act-attack .a-name { grid-column: 1; font-weight: 800; }
+.act-attack .a-dmg { grid-column: 2; grid-row: 1 / span 2; justify-self: end; align-self: center;
+  font-size: 1.35rem; font-weight: 900; color: #ffe27a; }
+.act-attack .a-cost { grid-column: 1; font-size: .82rem; letter-spacing: 1px; opacity: .95; }
+.act-attack .a-lock { grid-column: 1 / -1; font-size: .68rem; color: #ff9aa4; margin-top: 2px; }
+.act-attack.locked { background: rgba(28, 40, 72, .55); border-color: var(--line); filter: grayscale(.45); }
+.act-play { background: linear-gradient(100deg, var(--blue), var(--cyan)); color: #05122b; border: none; font-weight: 800; }
+
+/* Cible d'attache d'énergie qui clignote */
+.card.drop { outline: 2px solid var(--cyan); animation: dropPulse 1.1s ease-in-out infinite; }
+@keyframes dropPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 216, 255, 0); }
+  50% { box-shadow: 0 0 18px 4px rgba(79, 216, 255, .65); }
+}
+
 .tray { display: flex; justify-content: center; }
-#hand { display: flex; gap: 8px; overflow-x: auto; max-width: 1080px; padding: 4px 2px; scrollbar-width: thin; }
-.hand-card { width: 92px; }
+.tray-inner { width: 100%; max-width: 1080px; }
+.tray-label { text-align: center; font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+#hand { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px; scrollbar-width: thin; justify-content: flex-start; }
+.hand-card { width: 82px; }
 .hand-card .cap {
   position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: .7rem;
   padding: 3px 4px; background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .85));
@@ -178,11 +242,17 @@ body {
 }
 
 @media (max-width: 560px) {
-  .card { width: 84px; }
-  .card.big { width: 122px; }
-  .hand-card { width: 92px; }
-  .zone-wrap { gap: 14px; }
+  .card { width: 66px; }
+  .card.big { width: 100px; }
+  .hand-card { width: 74px; }
+  .zone-wrap { gap: 10px; }
+  .act-attack { min-width: 0; }
+  #actions { gap: 10px; }
+  .turn-hint { font-size: .82rem; }
+  .hud { font-size: .74rem; }
+  #log { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .card, .card:hover { transition: none; transform: none; }
+  .card.drop { animation: none; }
 }
