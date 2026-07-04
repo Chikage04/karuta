@@ -8,24 +8,40 @@
 </head>
 <body>
   <div id="lobby">
-    <h1>TCG</h1>
-    <input id="nameInput" maxlength="20" placeholder="Ton pseudo" />
-    <button id="joinBtn">Jouer (en ligne)</button>
-    <button id="soloBtn">Partie test — je joue les 2 côtés</button>
-    <p id="status"></p>
+    <div class="brand">
+      <span class="kicker">Team Blue Solo</span>
+      <h1>SOLO<span>TCG</span></h1>
+      <p class="tagline">La carte-bataille de la team. Feu, ténèbres, fée — et beaucoup de mauvaise foi.</p>
+    </div>
+    <div class="panel">
+      <input id="nameInput" maxlength="20" placeholder="Ton pseudo" />
+      <button id="soloBtn" class="btn-primary">Partie test — je joue les 2 côtés</button>
+      <button id="joinBtn" class="btn-ghost">Jouer en ligne</button>
+      <p id="status"></p>
+    </div>
   </div>
 
   <div id="board" class="hidden">
-    <div class="row"><span class="rowlabel">Adversaire</span><div id="oppInfo"></div></div>
-    <div class="zone" id="oppBench"></div>
-    <div class="zone active" id="oppActive"></div>
-    <hr />
-    <div class="zone active" id="youActive"></div>
-    <div class="zone" id="youBench"></div>
-    <div class="row"><span class="rowlabel">Toi</span><div id="youInfo"></div></div>
-    <div id="actions"></div>
-    <div id="hand"></div>
+    <div class="hud hud-opp"><span class="who">Adversaire</span><span id="oppInfo"></span></div>
+    <section class="zone-wrap">
+      <div class="bench" id="oppBench"></div>
+      <div class="active-slot" id="oppActive"></div>
+    </section>
+
+    <div class="divider"><span>VS</span></div>
+
+    <section class="zone-wrap">
+      <div class="active-slot" id="youActive"></div>
+      <div class="bench" id="youBench"></div>
+    </section>
+    <div class="hud hud-you"><span class="who">Toi</span><span id="youInfo"></span></div>
+
     <div id="log"></div>
+
+    <div class="dock">
+      <div id="actions"></div>
+      <div class="tray"><div id="hand"></div></div>
+    </div>
   </div>
 
   <div id="overlay" class="hidden"></div>

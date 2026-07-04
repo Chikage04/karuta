@@ -72,12 +72,13 @@ function cardEl(inPlay, opts = {}) {
   const el = document.createElement('div');
   el.className = 'card type-' + (m.type || 'colorless') + (opts.big ? ' big' : '');
   const imgHtml = m.image
-    ? `<img src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))" alt="${m.name}">`
+    ? `<img class="art" src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))" alt="${m.name}">`
     : `<div class="ph">${m.name}</div>`;
-  const hpLeft = m.hp != null ? Math.max(0, m.hp - (inPlay.damage || 0)) : '';
-  el.innerHTML = imgHtml +
-    `<div class="meta"><span>${m.name}</span><span class="hp">${hpLeft !== '' ? hpLeft + ' PV' : ''}</span></div>` +
-    `<div class="energy">${(inPlay.energy || []).map(sym).join(' ') || ''}</div>`;
+  const hpLeft = m.hp != null ? Math.max(0, m.hp - (inPlay.damage || 0)) : null;
+  const nrg = (inPlay.energy || []).map(sym).join('');
+  el.innerHTML = imgHtml
+    + (hpLeft != null ? `<span class="hpbadge">${hpLeft}<small>PV</small></span>` : '')
+    + (nrg ? `<span class="nrgbar">${nrg}</span>` : '');
   if (opts.onClick) el.onclick = opts.onClick;
   if (opts.selected) el.classList.add('selected');
   return el;
@@ -87,10 +88,11 @@ function sym(t) { return ({ fire:'🔥', water:'💧', darkness:'🌑', fairy:'�
 function handCardEl(id, index) {
   const m = meta(id);
   const el = document.createElement('div');
-  el.className = 'card type-' + (m.type || 'colorless') + (selectedHandIndex === index ? ' selected' : '');
-  el.innerHTML = (m.image
-    ? `<img src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))">`
-    : `<div class="ph">${m.name}</div>`) + `<div class="meta"><span>${m.name}</span></div>`;
+  el.className = 'card hand-card type-' + (m.type || 'colorless') + (selectedHandIndex === index ? ' selected' : '');
+  const imgHtml = m.image
+    ? `<img class="art" src="${m.image}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${m.name}'}))">`
+    : `<div class="ph">${m.name}</div>`;
+  el.innerHTML = imgHtml + `<span class="cap">${m.name}</span>`;
   el.onclick = () => { selectedHandIndex = (selectedHandIndex === index ? null : index); render(); };
   return el;
 }
